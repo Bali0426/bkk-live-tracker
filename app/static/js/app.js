@@ -226,6 +226,30 @@ document.getElementById('btnLocate').addEventListener('click', () => {
   }
 });
 
+const THEME_KEY = 'bkk_map_theme';
+let isDarkTheme = localStorage.getItem(THEME_KEY) !== 'light';
+
+function applyTheme() {
+  document.body.classList.toggle('dark-map', isDarkTheme);
+  const btn = document.getElementById('btnTheme');
+  if (btn) {
+    btn.textContent = isDarkTheme ? '🌙' : '☀️';
+    btn.title = isDarkTheme ? 'Váltás világos térképre' : 'Váltás sötét térképre';
+  }
+}
+
+applyTheme();
+
+const btnTheme = document.getElementById('btnTheme');
+if (btnTheme) {
+  btnTheme.addEventListener('click', () => {
+    isDarkTheme = !isDarkTheme;
+    localStorage.setItem(THEME_KEY, isDarkTheme ? 'dark' : 'light');
+    applyTheme();
+    showToast(isDarkTheme ? 'Sötét térkép bekapcsolva' : 'Világos térkép bekapcsolva');
+  });
+}
+
 document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('apiKeyInput').value = customApiKey;
   document.getElementById('settingsModal').classList.remove('hidden');
