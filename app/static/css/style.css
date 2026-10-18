@@ -18,13 +18,17 @@ body, html {
   z-index: 1;
 }
 
-/* Sötét téma OpenStreetMap csempékhez */
+/* Sötét téma OpenStreetMap csempékhez - Teljesen szürkeárnyalatos (grayscale) */
 .dark-map .leaflet-tile-pane {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+  filter: grayscale(100%) invert(100%) brightness(0.72) contrast(1.28);
+}
+
+.dark-map .leaflet-container {
+  background: #18181b;
 }
 
 .leaflet-container {
-  background: #0b0f19;
+  background: #e2e8f0;
 }
 
 .leaflet-control-attribution {
@@ -318,16 +322,12 @@ input:checked + .slider.round:before {
   box-shadow: 0 0 5px currentColor;
 }
 
-.dot-subway { background: #FFD800; color: #FFD800; }
+.dot-subway { background: #a855f7; color: #a855f7; }
 .dot-tram { background: #FFD800; color: #FFD800; }
 .dot-trolley { background: #E41F18; color: #E41F18; }
 .dot-bus { background: #009EE3; color: #009EE3; }
-.dot-rail { background: #007B3B; color: #007B3B; }
-.dot-mav-ontime { background: #10b981; color: #10b981; }
-.dot-mav-minor { background: #eab308; color: #eab308; }
-.dot-mav-major { background: #ef4444; color: #ef4444; }
-.dot-mav-ic { background: #38bdf8; color: #38bdf8; }
-.dot-station { background: #f59e0b; color: #f59e0b; }
+.dot-rail { background: #10b981; color: #10b981; }
+.dot-mav { background: #f59e0b; color: #f59e0b; }
 
 /* Vonalhálózat nyomvonal stílusok */
 .transit-line-tooltip {
@@ -344,7 +344,7 @@ input:checked + .slider.round:before {
   border-top-color: #0f172a !important;
 }
 
-/* Vehicle markers */
+/* Vehicle markers & Zoomed-out Dots */
 .vehicle-div-icon {
   background: transparent !important;
   border: none !important;
@@ -365,53 +365,63 @@ input:checked + .slider.round:before {
   transition: transform 0.15s ease;
 }
 .v-marker:hover {
-  transform: scale(1.15);
+  transform: scale(1.18);
   z-index: 1000 !important;
 }
 
-/* Megálló markerek: Gyűjtőmegállók és Per-irány megállók megkülönböztetése */
-.stop-marker {
+.v-dot,
+.mav-dot {
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* 🏢 Gyűjtőmegállók (Stop Area / Csomópont) - Lila kitűző */
+.v-dot:hover,
+.mav-dot:hover {
+  transform: scale(1.6);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+  z-index: 1000 !important;
+}
+
+/* Megálló markerek: Típus szerinti színkódolással és nagyítás-függő mérettel */
+.stop-marker {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+/* 🏢 Gyűjtőmegállók (Stop Area / Csomópont) */
 .stop-marker-parent {
-  width: 20px;
-  height: 20px;
-  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  background: var(--stop-color, #a855f7);
   border: 2px solid #ffffff;
   border-radius: 6px;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+  box-shadow: 0 0 9px rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
   line-height: 1;
 }
 .stop-marker-parent:hover {
   transform: scale(1.35);
-  box-shadow: 0 0 16px rgba(192, 132, 252, 0.95);
+  box-shadow: 0 0 14px var(--stop-color, #a855f7);
   z-index: 1000 !important;
 }
 
-/* 🚏 Per-irány megállók (Platform / Oszlop) - OSM Transport stílusú kék-lila pont */
+/* 🚏 Per-irány megállók (Platform / Oszlop) */
 .stop-marker-dir {
-  width: 12px;
-  height: 12px;
-  background: #6366f1;
-  border: 2px solid #ffffff;
+  background: var(--stop-color, #0ea5e9);
+  border: 1.8px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease, background 0.15s ease;
 }
 .stop-marker-dir:hover {
-  transform: scale(1.4);
-  background: #a5b4fc;
-  box-shadow: 0 0 12px rgba(165, 180, 252, 0.95);
+  transform: scale(1.45);
+  box-shadow: 0 0 12px var(--stop-color, #0ea5e9);
   z-index: 1000 !important;
 }
 
@@ -423,21 +433,9 @@ input:checked + .slider.round:before {
   font-size: 10px;
   font-weight: 700;
   margin-bottom: 4px;
-}
-.stop-badge-parent {
-  background: rgba(99, 102, 241, 0.25);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-}
-.stop-badge-dir {
-  background: rgba(99, 102, 241, 0.2);
-  color: #c7d2fe;
-  border: 1px solid rgba(99, 102, 241, 0.35);
-}
-.stop-badge-rail-station {
-  background: rgba(245, 158, 11, 0.25);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #ffffff;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 /* 🏢 Megállócsoport lekerekített burkok (OSM Transport stílus) */
@@ -448,24 +446,23 @@ input:checked + .slider.round:before {
 
 .stop-group-polygon:hover {
   fill-opacity: 0.38 !important;
-  stroke: #818cf8 !important;
-  stroke-width: 2.2px !important;
+  stroke-width: 2.4px !important;
 }
 
 
-/* FUTÁR Departure Board */
+/* Egységesített FUTÁR & MÁV Élő Adatok és Menetrend Widget */
 .futar-board {
   position: absolute;
   top: 14px;
   right: 14px;
   z-index: 1000;
-  width: 350px;
+  width: 420px;
   max-width: calc(100vw - 28px);
   background: #090d16;
   color: #f8fafc;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
 
@@ -479,6 +476,7 @@ input:checked + .slider.round:before {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 10px;
   border-bottom: 2px solid #eab308;
 }
 
@@ -487,21 +485,54 @@ input:checked + .slider.round:before {
   font-weight: 700;
   letter-spacing: 1px;
   color: #eab308;
+  text-transform: uppercase;
 }
 
 .board-title {
   font-size: 16px;
   font-weight: 800;
   margin-top: 2px;
+  color: #f8fafc;
 }
 
 .board-stop-id {
   margin-top: 6px;
   font-size: 11px;
-  color: #94a3b8;
+  color: #cbd5e1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.board-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.board-tab {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.board-tab:hover {
+  background: rgba(51, 65, 85, 0.8);
+  color: #ffffff;
+}
+
+.board-tab.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
 }
 
 .btn-copy {
@@ -523,9 +554,10 @@ input:checked + .slider.round:before {
 }
 
 .board-list {
-  max-height: 360px;
+  max-height: 440px;
   overflow-y: auto;
   padding: 8px 0;
+  color: #f1f5f9;
 }
 
 .dep-row {
@@ -555,6 +587,7 @@ input:checked + .slider.round:before {
 .dep-headsign {
   font-size: 13px;
   font-weight: 500;
+  color: #f1f5f9;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -572,7 +605,7 @@ input:checked + .slider.round:before {
   background: #0f172a;
   padding: 10px 16px;
   font-size: 11px;
-  color: #64748b;
+  color: #94a3b8;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -667,9 +700,10 @@ input:checked + .slider.round:before {
 }
 
 .mav-name-tag {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
   font-size: 11px;
-  letter-spacing: -0.3px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
 }
 
 .mav-delay-pill {
@@ -677,41 +711,35 @@ input:checked + .slider.round:before {
   padding: 1px 5px;
   font-size: 10px;
   font-weight: 700;
-  font-family: 'Inter', sans-serif;
+  font-family: 'JetBrains Mono', monospace;
   line-height: 1.2;
 }
 
-/* MÁV Menetrend Board */
-.mav-board {
-  width: 440px;
-  max-width: calc(100vw - 28px);
-}
-
-.mav-board-header {
-  border-bottom: 2px solid #0284c7;
-}
-
+/* 📋 MÁV-START Menetrend Táblázatok (table.vt & table.af) - Sötét téma szövegszín garancia */
 .mav-board-list {
-  max-height: 460px;
-  overflow-y: auto;
-  padding: 6px 10px;
+  color: #f1f5f9 !important;
 }
 
 .mav-board-list #vt,
-.mav-board-list .timetable {
+.mav-board-list .timetable,
+.mav-board-list div {
   width: 100% !important;
   background: transparent !important;
+  color: #f1f5f9 !important;
 }
 
-.mav-board-list table.vt {
+.mav-board-list table.vt,
+.mav-board-list table.af {
   width: 100% !important;
   border-collapse: collapse;
   font-size: 12px;
+  color: #f1f5f9 !important;
 }
 
-.mav-board-list table.vt th {
+.mav-board-list table.vt th,
+.mav-board-list table.af th {
   background: #1e293b;
-  color: #94a3b8;
+  color: #cbd5e1 !important;
   font-size: 11px;
   font-weight: 600;
   padding: 6px 8px;
@@ -720,8 +748,8 @@ input:checked + .slider.round:before {
 }
 
 .mav-board-list table.vt th.title {
-  background: linear-gradient(135deg, #0284c7, #0369a1);
-  color: #ffffff;
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+  color: #ffffff !important;
   font-size: 13px;
   font-weight: 800;
   padding: 8px 10px;
@@ -729,95 +757,9 @@ input:checked + .slider.round:before {
   text-align: center;
 }
 
-.mav-board-list table.vt th[style*="background-color:yellow"] {
-  background: #854d0e !important;
-  color: #fef08a !important;
-  font-weight: 700;
-  border-radius: 4px;
-  padding: 6px;
-}
-
-.mav-board-list table.vt th[style*="background-color:red"] {
-  background: #991b1b !important;
-  color: #fee2e2 !important;
-  font-weight: 700;
-  border-radius: 4px;
-  padding: 6px;
-}
-
-.mav-board-list table.vt td {
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
-  font-size: 12px;
-}
-
-.mav-board-list table.vt tr.row_past_odd,
-.mav-board-list table.vt tr.row_past_even {
-  opacity: 0.6;
-}
-
-.mav-board-list table.vt tr.row_highlight,
-.mav-board-list table.vt tr:hover {
-  background: rgba(56, 189, 248, 0.12) !important;
-}
-
-.mav-board-list table.vt a {
-  color: #38bdf8;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.mav-board-list table.vt a:hover {
-  text-decoration: underline;
-}
-
-.mav-board-list table.vt span[style*="color:red"] {
-  color: #f87171 !important;
-  font-weight: 700;
-}
-
-.mav-board-list table.vt span[style*="color:green"] {
-  color: #34d399 !important;
-  font-weight: 700;
-}
-
-.mav-board-list table.vt td[style*="color:blue"],
-.mav-board-list table.vt td[style*="color:green"],
-.mav-board-list table.vt td[style*="color:red"] {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-}
-
-.mav-board-list table.vt td[style*="color:blue"] {
-  color: #60a5fa !important;
-}
-
-.mav-board-list table.vt img {
-  vertical-align: middle;
-  filter: invert(0.8);
-}
-
-/* 📋 MÁV Állomási Menetrend Táblázat (table.af) */
-.mav-board-list table.af {
-  width: 100% !important;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.mav-board-list table.af th {
-  background: #1e293b;
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  text-align: left;
-}
-
 .mav-board-list table.af th.title {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #0f172a;
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #0f172a !important;
   font-size: 14px;
   font-weight: 800;
   padding: 8px 10px;
@@ -825,63 +767,119 @@ input:checked + .slider.round:before {
   text-align: center;
 }
 
+.mav-board-list table.vt th.title font,
+.mav-board-list table.vt th.title * {
+  color: #e0f2fe !important;
+}
+
+.mav-board-list table.af th.title font,
+.mav-board-list table.af th.title * {
+  color: #0f172a !important;
+}
+
+.mav-board-list table.vt th[style*="background-color:yellow"],
+.mav-board-list table.vt th[style*="background-color:#854d0e"],
+.mav-board-list table.af th[style*="background-color:yellow"],
+.mav-board-list table.af th[style*="background-color:#854d0e"] {
+  background: #854d0e !important;
+  color: #fef08a !important;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.mav-board-list table.vt th[style*="background-color:red"],
+.mav-board-list table.af th[style*="background-color:red"] {
+  background: #991b1b !important;
+  color: #fee2e2 !important;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.mav-board-list table.vt td,
+.mav-board-list table.af td,
+.mav-board-list table.vt td *,
+.mav-board-list table.af td * {
+  color: #f1f5f9;
+}
+
+.mav-board-list table.vt td,
 .mav-board-list table.af td {
   padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #f1f5f9 !important;
   font-size: 12px;
 }
 
-.mav-board-list table.af tr.row_odd {
-  background: rgba(255, 255, 255, 0.02);
+/* Fekete inline stílusok felülbírálása világosra */
+.mav-board-list [style*="color:#000000"],
+.mav-board-list [style*="color:black"],
+.mav-board-list [style*="color:#f1f5f9"] {
+  color: #f1f5f9 !important;
 }
 
-.mav-board-list table.af tr.row_even {
-  background: transparent;
-}
-
-.mav-board-list table.af tr.row_highlight,
-.mav-board-list table.af tr:hover {
-  background: rgba(245, 158, 11, 0.12) !important;
-}
-
-.mav-board-list table.af a {
-  color: #38bdf8;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.mav-board-list table.af a:hover {
-  text-decoration: underline;
-}
-
-.mav-board-list table.af span[style*="color:red"] {
+.mav-board-list [style*="color:red"],
+.mav-board-list [style*="color:#FF0000"],
+.mav-board-list [style*="color:#f87171"] {
   color: #f87171 !important;
   font-weight: 700;
 }
 
-.mav-board-list table.af span[style*="color:green"] {
+.mav-board-list [style*="color:green"],
+.mav-board-list [style*="color:#008000"],
+.mav-board-list [style*="color:#34d399"] {
   color: #34d399 !important;
   font-weight: 700;
 }
 
-.mav-board-list table.af td[style*="color:red"],
-.mav-board-list table.af td[style*="color:blue"] {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 800;
+.mav-board-list [style*="color:blue"],
+.mav-board-list [style*="color:#0000FF"],
+.mav-board-list [style*="color:#38bdf8"] {
+  color: #38bdf8 !important;
+  font-weight: 700;
 }
 
-.mav-board-list table.af td[style*="color:red"] {
-  color: #f87171 !important;
+.mav-board-list table.vt tr.row_past_odd,
+.mav-board-list table.vt tr.row_past_even {
+  opacity: 0.65;
 }
 
-.mav-board-list table.af td[style*="color:blue"] {
-  color: #60a5fa !important;
+.mav-board-list table.af tr.row_odd,
+.mav-board-list table.vt tr.row_odd {
+  background: rgba(255, 255, 255, 0.025);
 }
 
-.mav-board-list table.af img {
+.mav-board-list table.af tr.row_even,
+.mav-board-list table.vt tr.row_even {
+  background: transparent;
+}
+
+.mav-board-list table.vt tr.row_highlight,
+.mav-board-list table.vt tr:hover,
+.mav-board-list table.af tr.row_highlight,
+.mav-board-list table.af tr:hover {
+  background: rgba(56, 189, 248, 0.14) !important;
+}
+
+.mav-board-list table.vt a,
+.mav-board-list table.af a {
+  color: #38bdf8 !important;
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mav-board-list table.vt a:hover,
+.mav-board-list table.af a:hover {
+  text-decoration: underline;
+}
+
+.mav-board-list img {
   vertical-align: middle;
-  filter: invert(0.8);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 3px;
+  padding: 1px;
+  margin: 1px;
 }
 

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=20261018g">
+  <link rel="stylesheet" href="/static/css/style.css?v=20261018i">
 </head>
 <body class="dark-map">
   <div id="map"></div>
@@ -17,7 +17,7 @@
     <div class="top-row">
       <div class="brand">
         <span class="pulse-dot"></span>
-        <span>BKK Live Tracker</span>
+        <span>BKK & MÁV Live Tracker</span>
       </div>
       <div class="action-buttons">
         <button class="btn btn-icon" id="btnToggleStops" title="Megállók megjelenítése a térképen">🚏 Megállók</button>
@@ -28,19 +28,17 @@
       </div>
     </div>
 
-    <!-- Fülek: Járművek vs Vonalak vs MÁV vs Menetrend -->
+    <!-- Fülek: Járművek vs Vonalak -->
     <div class="panel-tabs">
-      <button class="panel-tab active" id="tabVehiclesBtn" data-tab="tabVehicles">🚌 BKK Járművek</button>
-      <button class="panel-tab" id="tabLinesBtn" data-tab="tabLines">🛤️ BKK Vonalak</button>
-      <button class="panel-tab" id="tabMavBtn" data-tab="tabMav">🚆 MÁV Vonatok</button>
-      <button class="panel-tab" id="tabStationsBtn" data-tab="tabStations">📋 Menetrend</button>
+      <button class="panel-tab active" id="tabVehiclesBtn" data-tab="tabVehicles">🚌 Járművek</button>
+      <button class="panel-tab" id="tabLinesBtn" data-tab="tabLines">🛤️ Vonalak</button>
     </div>
 
     <!-- 1. FÜL: JÁRMŰVEK -->
     <div class="tab-content" id="tabVehicles">
       <div class="filter-row">
-        <input type="text" id="routeFilter" class="input-field" placeholder="Jármű szűrése (pl. 4, 105, 72, H5)...">
-        <input type="text" id="stopInput" class="input-field stop-id-input" placeholder="Stop ID (pl. BKK_F01046)">
+        <input type="text" id="routeFilter" class="input-field" placeholder="Szűrés (pl. 4, 105, IC, Z30, Tokaj)...">
+        <input type="text" id="stopInput" class="input-field stop-id-input" placeholder="Megálló / Állomás (pl. Keleti, BKK_F01046)">
         <button class="btn btn-secondary" id="btnLoadStop">Kijelző</button>
       </div>
 
@@ -69,6 +67,11 @@
           <input type="checkbox" class="mode-toggle-switch" data-type="vehicle" data-mode="RAIL" checked>
           <span class="slider round"></span>
           <span class="switch-title"><span class="mode-dot dot-rail"></span>HÉV</span>
+        </label>
+        <label class="switch-label">
+          <input type="checkbox" class="mode-toggle-switch" data-type="vehicle" data-mode="MAV" checked>
+          <span class="slider round"></span>
+          <span class="switch-title"><span class="mode-dot dot-mav"></span>Vonat</span>
         </label>
       </div>
 
@@ -112,6 +115,11 @@
           <span class="slider round"></span>
           <span class="switch-title"><span class="mode-dot dot-rail"></span>HÉV vonalak</span>
         </label>
+        <label class="switch-label">
+          <input type="checkbox" class="mode-toggle-switch" data-type="line" data-mode="MAV_RAIL">
+          <span class="slider round"></span>
+          <span class="switch-title"><span class="mode-dot dot-mav"></span>Vasútvonalak (MÁV)</span>
+        </label>
       </div>
 
       <div class="status-row">
@@ -119,95 +127,31 @@
         <button class="btn-text-action" id="btnToggleAllLines">Összes elrejtése</button>
       </div>
     </div>
-
-    <!-- 3. FÜL: MÁV VONATOK -->
-    <div class="tab-content hidden" id="tabMav">
-      <div class="filter-row">
-        <input type="text" id="mavFilter" class="input-field" placeholder="Vonat keresése (pl. IC, S30, 149, Tokaj, Szeged)...">
-        <button class="btn btn-secondary" id="btnToggleMavRails" title="MÁV vasúti vágányhálózat ki/bekapcsolása">🛤️ Vasútvonalak</button>
-        <button class="btn btn-icon" id="btnFitMavTrains" title="Országos áttekintés">🇭🇺 Országos nézet</button>
-      </div>
-
-      <div class="switch-group" id="mavSwitches">
-        <label class="switch-label">
-          <input type="checkbox" class="mav-toggle-switch" data-category="on_time" checked>
-          <span class="slider round"></span>
-          <span class="switch-title"><span class="mode-dot dot-mav-ontime"></span>Pontos (0p)</span>
-        </label>
-        <label class="switch-label">
-          <input type="checkbox" class="mav-toggle-switch" data-category="minor" checked>
-          <span class="slider round"></span>
-          <span class="switch-title"><span class="mode-dot dot-mav-minor"></span>1-9p késés</span>
-        </label>
-        <label class="switch-label">
-          <input type="checkbox" class="mav-toggle-switch" data-category="major" checked>
-          <span class="slider round"></span>
-          <span class="switch-title"><span class="mode-dot dot-mav-major"></span>10p+ késés</span>
-        </label>
-        <label class="switch-label">
-          <input type="checkbox" class="mav-toggle-switch" data-category="ic_only">
-          <span class="slider round"></span>
-          <span class="switch-title"><span class="mode-dot dot-mav-ic"></span>Csak IC / RJ / EC</span>
-        </label>
-      </div>
-
-      <div class="status-row">
-        <span id="mavStats">0 vonat a hálózaton</span>
-        <span id="mavAvgDelay">Átlagos késés: -</span>
-      </div>
-    </div>
-
-    <!-- 4. FÜL: MENETREND & KERESÉS -->
-    <div class="tab-content hidden" id="tabStations">
-      <div class="filter-row">
-        <input type="text" id="stationSearchInput" class="input-field" placeholder="Állomás vagy megálló keresése (pl. Keleti, Debrecen, Deák tér)...">
-        <button class="btn btn-primary" id="btnSearchStation">Keresés</button>
-      </div>
-
-      <div class="station-hint-box" style="margin-top:10px;padding:10px 12px;background:rgba(30,41,59,0.7);border-radius:10px;border:1px solid rgba(255,255,255,0.1);font-size:12px;color:#cbd5e1;line-height:1.5;">
-        💡 <strong>Tipp:</strong> Kattints bármelyik megállóra a térképen, vagy keress rá név szerint a menetrendi indulások és vágányok azonnali megnyitásához.
-      </div>
-    </div>
   </div>
 
-  <!-- Jobb oldali FUTÁR Megállóhelyi Kijelző Panel -->
+  <!-- Egységesített Jobb oldali FUTÁR Élő Adatok & Menetrend Widget -->
   <div class="futar-board hidden" id="futarBoard">
-    <div class="board-header">
-      <div>
-        <div class="board-subtitle">FUTÁR ÉLŐ INDULÁSOK</div>
-        <div class="board-title" id="boardStopName">Megálló neve</div>
-        <div class="board-stop-id">
+    <div class="board-header" id="boardHeader">
+      <div style="flex:1;min-width:0;">
+        <div class="board-subtitle" id="boardSubtitle">FUTÁR ÉLŐ ADATOK & MENETREND</div>
+        <div class="board-title" id="boardStopName">Megálló / Állomás</div>
+        <div class="board-stop-id" id="boardMetaRow">
           <span id="boardStopId">BKK_F01046</span>
           <button class="btn-copy" id="btnCopyStopId" title="Stop ID másolása widgethez">📋 Widget ID másolása</button>
+        </div>
+        <!-- Beépített váltógombok ha a megállóhoz BKK és MÁV menetrend is tartozik -->
+        <div class="board-tabs hidden" id="boardModeTabs">
+          <button class="board-tab active" id="boardTabBkk" type="button">🚏 BKK Indulások</button>
+          <button class="board-tab" id="boardTabMav" type="button">🚆 MÁV Menetrend</button>
         </div>
       </div>
       <button class="btn-close" id="btnCloseBoard">✕</button>
     </div>
-    <div class="board-list" id="boardDeparturesList">
-      <!-- Dinamikus indulási sorok -->
+    <div class="board-list mav-board-list" id="boardDeparturesList">
+      <!-- Dinamikus BKK indulási sorok vagy MÁV-START menetrend táblázat -->
     </div>
     <div class="board-footer">
-      <span>Widget API végpont: <code id="boardApiUrl">/api/departures/BKK_F01046</code></span>
-    </div>
-  </div>
-
-  <!-- Jobb oldali MÁV Vonat Menetrend Panel -->
-  <div class="futar-board mav-board hidden" id="mavBoard">
-    <div class="board-header mav-board-header">
-      <div>
-        <div class="board-subtitle" id="mavBoardSubtitle">MÁV-START ÉLŐ MENETREND</div>
-        <div class="board-title" id="mavBoardTrainName">Vonatszám</div>
-        <div class="board-stop-id">
-          <span id="mavBoardRelation">Viszonylat</span>
-        </div>
-      </div>
-      <button class="btn-close" id="btnCloseMavBoard">✕</button>
-    </div>
-    <div class="board-list mav-board-list" id="mavBoardTimetableList">
-      <!-- Dinamikus MÁV menetrend táblázat -->
-    </div>
-    <div class="board-footer">
-      <span id="mavBoardFooterText">MÁV Élő Telemetria & Nyomvonal</span>
+      <span id="boardFooterText">Widget API végpont: <code id="boardApiUrl">/api/departures/BKK_F01046</code></span>
     </div>
   </div>
 
@@ -229,6 +173,6 @@
   <div class="toast" id="toast"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="/static/js/app.js?v=20261018h"></script>
+  <script src="/static/js/app.js?v=20261018i"></script>
 </body>
 </html>

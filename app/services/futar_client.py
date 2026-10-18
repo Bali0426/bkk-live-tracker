@@ -263,7 +263,7 @@ async def fetch_stops_for_location(
     api_key: Optional[str] = None
 ) -> Dict[str, Any]:
     key = resolve_api_key(api_key)
-    cache_key = f"stops:{round(lat, 3)}:{round(lon, 3)}:{round(lat_span, 3)}"
+    cache_key = f"stops_v2:{round(lat, 3)}:{round(lon, 3)}:{round(lat_span, 3)}"
     cached = cache.get(cache_key)
     if cached:
         return cached
@@ -284,22 +284,77 @@ async def fetch_stops_for_location(
 
     data = raw.get("data", {})
     list_items = data.get("list", [])
+    routes_ref = data.get("references", {}).get("routes", {})
 
     stops = []
     for s in list_items:
         if s.get("lat") and s.get("lon"):
+            stop_id = str(s.get("id") or "")
+            stop_name = str(s.get("name") or "")
+            name_low = stop_name.lower()
+            raw_type = str(s.get("type") or "").upper()
+
+            r_types = set()
+            r_short_names = []
+            for rid in s.get("routeIds", []):
+                r_obj = routes_ref.get(rid, {})
+                rt = str(r_obj.get("type") or "").upper()
+                sn = str(r_obj.get("shortName") or "").upper()
+                if rt:
+                    r_types.add(rt)
+                if sn:
+                    r_short_names.append(sn)
+            if raw_type:
+                r_types.add(raw_type)
+
+            has_hev_route = any(sn in ("H5", "H6", "H7", "H8", "H9") for sn in r_short_names)
+            is_mav_station = (
+                stop_id.startswith("BKK_0055")
+                or "vasútállomás" in name_low
+                or "pályaudvar" in name_low
+                or ("RAIL" in r_types and not has_hev_route)
+            )
+
+            if is_mav_station:
+                stop_cat = "MAV"
+                stop_color = "#f59e0b"
+                stop_label = "Vasútállomás"
+            elif "SUBWAY" in r_types:
+                stop_cat = "SUBWAY"
+                stop_color = "#a855f7"
+                stop_label = "Metróállomás"
+            elif has_hev_route or "SUBURBAN_RAILWAY" in r_types or "hév" in name_low:
+                stop_cat = "HEV"
+                stop_color = "#10b981"
+                stop_label = "HÉV-állomás"
+            elif "TRAM" in r_types:
+                stop_cat = "TRAM"
+                stop_color = "#eab308"
+                stop_label = "Villamosmegálló"
+            elif "TROLLEYBUS" in r_types:
+                stop_cat = "TROLLEYBUS"
+                stop_color = "#ef4444"
+                stop_label = "Trolibuszmegálló"
+            else:
+                stop_cat = "BUS"
+                stop_color = "#0ea5e9"
+                stop_label = "Buszmegálló"
+
             is_parent = bool(
                 s.get("locationType") == 1
                 or s.get("locationSubType") == "stop-area"
-                or (s.get("id") or "").startswith("BKK_CS")
+                or stop_id.startswith("BKK_CS")
             )
             stops.append({
-                "stopId": s.get("id"),
-                "name": s.get("name"),
+                "stopId": stop_id,
+                "name": stop_name,
                 "lat": s.get("lat"),
                 "lon": s.get("lon"),
                 "direction": s.get("direction", ""),
-                "type": s.get("type", ""),
+                "type": raw_type or stop_cat,
+                "stopCategory": stop_cat,
+                "stopColor": stop_color,
+                "stopTypeLabel": stop_label,
                 "locationType": s.get("locationType", 0),
                 "locationSubType": s.get("locationSubType", ""),
                 "parentStationId": s.get("parentStationId", ""),

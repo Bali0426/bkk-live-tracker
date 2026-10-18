@@ -6,11 +6,14 @@ import httpx
 from app.services.futar_client import decode_polyline, SimpleTTLCache
 
 mav_cache = SimpleTTLCache(ttl_seconds=8)
+mav_names_cache = SimpleTTLCache(ttl_seconds=45)
 mav_train_details_cache = SimpleTTLCache(ttl_seconds=30)
 mav_lines_cache = SimpleTTLCache(ttl_seconds=300)
 mav_station_cache = SimpleTTLCache(ttl_seconds=45)
 
 VONATINFO_URL = "https://vonatinfo.mav.hu/map.aspx/getData"
+MAVPLUSZ_GRAPHQL_URL = "https://mavplusz.hu/otp2-backend/otp/routers/default/index/graphql"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Content-Type": "application/json; charset=utf-8",
@@ -21,9 +24,188 @@ HEADERS = {
 }
 
 
+def clean_mav_html(html: str) -> str:
+    """Megtisztítja az Elvira HTML táblázatot a fekete/sötét inline színektől és beköti a kattintható linkeket."""
+    if not html:
+        return ""
+
+    # 1. Kattintható vonat és állomás linkek átalakítása saját JS függvényekre
+    html = re.sub(
+        r"map\.getData\('TRAIN',\s*\{\s*v:\s*'([^']+)'(?:,\s*[^}]*)?\}\s*\)",
+        r"loadMavTrainDetails('\1', '')",
+        html
+    )
+    html = re.sub(
+        r"map\.getData\('STATION',\s*\{[^}]*?\ba:\s*'([^']+)'[^}]*\}\s*\)",
+        r"loadMavStationDetails('\1')",
+        html
+    )
+
+    # 2. Sötét hátteren olvashatatlan inline színek (fekete, sötétkék, sötétzöld, sárga fejléc) javítása
+    html = re.sub(
+        r"color\s*:\s*blue\s*;\s*background-color\s*:\s*yellow",
+        "color:#fef08a;background-color:#854d0e",
+        html,
+        flags=re.IGNORECASE
+    )
+    html = re.sub(
+        r"color\s*:\s*blue\s*;\s*background-color\s*:\s*orange",
+        "color:#fed7aa;background-color:#9a3412",
+        html,
+        flags=re.IGNORECASE
+    )
+    html = re.sub(
+        r"color\s*:\s*(#000000|#000|black)\b",
+        "color:#f1f5f9",
+        html,
+        flags=re.IGNORECASE
+    )
+    html = re.sub(
+        r"color\s*:\s*(#0000ff|blue)\b",
+        "color:#38bdf8",
+        html,
+        flags=re.IGNORECASE
+    )
+    html = re.sub(
+        r"color\s*:\s*(#008000|green)\b",
+        "color:#34d399",
+        html,
+        flags=re.IGNORECASE
+    )
+    html = re.sub(
+        r"color\s*:\s*(#ff0000|red)\b",
+        "color:#f87171",
+        html,
+        flags=re.IGNORECASE
+    )
+    return html
+
+
+async def fetch_mav_train_names() -> Dict[str, Dict[str, str]]:
+    """Lekéri a MÁV+ (EMMA) GraphQL végpontról a vonatok viszonylatjelét és nevét (pl. IC TOKAJ, Z30, S10)."""
+    cache_key = "mav_train_names"
+    cached = mav_names_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    query = (
+        "{ vehiclePositions(swLat: 45.7, swLon: 16.0, neLat: 48.6, neLon: 22.9) "
+        "{ trip { tripShortName tripHeadsign route { longName mode } } } }"
+    )
+    name_map: Dict[str, Dict[str, str]] = {}
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            resp = await client.post(
+                MAVPLUSZ_GRAPHQL_URL,
+                json={"query": query},
+                headers={
+                    "User-Agent": HEADERS["User-Agent"],
+                    "Content-Type": "application/json",
+                    "Origin": "https://mavplusz.hu",
+                    "Referer": "https://mavplusz.hu/"
+                }
+            )
+            if resp.status_code == 200:
+                vp = resp.json().get("data", {}).get("vehiclePositions", [])
+                for v in vp:
+                    t = v.get("trip") or {}
+                    rt = t.get("route") or {}
+                    if rt.get("mode") not in ("RAIL", "SUBURBAN_RAILWAY", "TRAMTRAIN"):
+                        continue
+                    tsn = (t.get("tripShortName") or "").strip()
+                    ln = (rt.get("longName") or "").strip()
+                    hs = (t.get("tripHeadsign") or "").strip()
+                    m = re.match(r"^(\d+)\s*(.*)$", tsn)
+                    if m:
+                        num = m.group(1)
+                        rest = m.group(2).strip()
+                        short_hs = hs.replace("Budapest-", "Bp-").replace(" vasútállomás", "")
+                        if rest.lower() == "tramtrain":
+                            clean = f"TramTrain → {short_hs}" if short_hs else "TramTrain"
+                        elif ln and not ln.startswith("Sz ") and "/" not in ln and not ln.startswith("S "):
+                            clean = f"{ln} → {short_hs}" if short_hs and len(ln) <= 4 else ln
+                        elif rest and rest.lower() not in ("személyvonat", "sebesvonat", "gyorsvonat"):
+                            # pl. "SAVARIA InterCity" -> "IC SAVARIA"
+                            clean_rest = (
+                                rest.replace("InterCity", "IC")
+                                .replace("EuroCity", "EC")
+                                .replace("InterRégió", "IR")
+                                .replace("EuroNight", "EN")
+                            )
+                            clean = clean_rest
+                        elif short_hs:
+                            prefix = "Sebes" if "sebes" in rest.lower() else "Sz"
+                            clean = f"{prefix} → {short_hs}"
+                        else:
+                            clean = rest or ln or num
+
+                        name_map[num] = {
+                            "trainName": clean,
+                            "fullTitle": tsn,
+                            "headsign": hs,
+                            "routeCode": ln if "/" not in ln else ""
+                        }
+        mav_names_cache.set(cache_key, name_map)
+    except Exception:
+        pass
+    return name_map
+
+
+def resolve_train_display(raw_num: str, relation: str, name_map: Dict[str, Dict[str, str]]) -> Dict[str, str]:
+    """Kinyeri a vonat olvasható nevét és rövid számát az UIC azonosító és viszonylat alapján."""
+    short_num = raw_num
+    if raw_num.startswith("55") and len(raw_num) > 2:
+        short_num = raw_num[2:]
+    elif raw_num.startswith("43") and len(raw_num) > 2:
+        short_num = raw_num[2:]
+
+    # HÉV vonatok (36H...)
+    if raw_num.startswith("36H"):
+        dest = relation.split(" - ")[-1].strip() if " - " in relation else relation
+        if raw_num.startswith("36H1"):
+            hev = "H9" if "Csömör" in relation else "H8"
+        elif raw_num.startswith("36H2"):
+            hev = "H6"
+        elif raw_num.startswith("36H3"):
+            hev = "H7"
+        elif raw_num.startswith("36H4"):
+            hev = "H5"
+        else:
+            hev = "HÉV"
+        return {
+            "shortNumber": raw_num[2:],
+            "trainName": f"{hev} → {dest}" if dest else hev,
+            "fullTitle": f"{hev} ({relation})"
+        }
+
+    if short_num in name_map:
+        info = name_map[short_num]
+        return {
+            "shortNumber": short_num,
+            "trainName": info["trainName"],
+            "fullTitle": info["fullTitle"]
+        }
+
+    # Ha nincs az EMMA térképen, a viszonylatból képezünk beszédes nevet
+    if relation and " - " in relation:
+        parts = [p.strip().replace("Budapest-", "Bp-").replace(" vasútállomás", "") for p in relation.split(" - ")]
+        dest = parts[-1]
+        train_name = f"→ {dest}"
+    elif relation:
+        train_name = relation.replace("Budapest-", "Bp-")
+    else:
+        train_name = f"Vonat {short_num}"
+
+    return {
+        "shortNumber": short_num,
+        "trainName": train_name,
+        "fullTitle": f"{short_num} ({relation})" if relation else short_num
+    }
+
+
 async def fetch_mav_trains() -> Dict[str, Any]:
-    """Lekéri az összes magyarországi MÁV és GYSEV vonat élő GPS pozícióját és késését."""
-    cache_key = "mav_trains"
+    """Lekéri az összes magyarországi MÁV és GYSEV vonat élő GPS pozícióját, nevét és késését."""
+    cache_key = "mav_trains_v2"
     cached = mav_cache.get(cache_key)
     if cached:
         return cached
@@ -34,6 +216,8 @@ async def fetch_mav_trains() -> Dict[str, Any]:
         resp = await client.post(VONATINFO_URL, json=payload, headers=HEADERS)
         resp.raise_for_status()
         raw = resp.json()
+
+    name_map = await fetch_mav_train_names()
 
     val = raw.get("d", {})
     if isinstance(val, str):
@@ -60,6 +244,11 @@ async def fetch_mav_trains() -> Dict[str, Any]:
             elvira_id = str(t.get("@ElviraID") or "")
             menetvonal = str(t.get("@Menetvonal") or "MAV")
 
+            display_info = resolve_train_display(train_num, relation, name_map)
+            train_name = display_info["trainName"]
+            short_num = display_info["shortNumber"]
+            full_title = display_info["fullTitle"]
+
             # Késési kategória és színkód
             if delay <= 0:
                 cat = "on_time"
@@ -77,12 +266,14 @@ async def fetch_mav_trains() -> Dict[str, Any]:
                 text_color = "#FFFFFF"
                 status_desc = f"+{delay} perc"
 
-            # Típus (IC, S, Z, G, Ex, EC, stb.)
-            is_ic = "IC" in train_num or "EuroCity" in relation or "EC" in train_num or "Railjet" in relation
-            is_suburban = train_num.startswith("S") or train_num.startswith("Z") or train_num.startswith("G")
+            is_ic = any(k in full_title or k in train_name for k in ("IC", "InterCity", "EC", "EuroCity", "RJ", "Railjet"))
+            is_suburban = any(train_name.startswith(p) for p in ("S", "Z", "G", "H"))
 
             trains.append({
-                "trainNumber": train_num,
+                "trainNumber": short_num,
+                "rawTrainNumber": train_num,
+                "trainName": train_name,
+                "fullTitle": full_title,
                 "relation": relation,
                 "delay": delay,
                 "lat": lat,
@@ -113,7 +304,7 @@ async def fetch_mav_trains() -> Dict[str, Any]:
 
 async def fetch_mav_train_details(elvira_id: str, train_number: Optional[str] = None) -> Dict[str, Any]:
     """Lekéri egy adott MÁV vonat menetrendjét (állomások, peronok, idők) és nyomvonalát."""
-    cache_key = f"mav_train:{elvira_id}:{train_number}"
+    cache_key = f"mav_train_v2:{elvira_id}:{train_number}"
     cached = mav_train_details_cache.get(cache_key)
     if cached:
         return cached
@@ -138,7 +329,7 @@ async def fetch_mav_train_details(elvira_id: str, train_number: Optional[str] = 
         val = json.loads(val)
 
     res = val.get("result", {})
-    html_timetable = res.get("html", "")
+    html_timetable = clean_mav_html(res.get("html", ""))
     line_segments = res.get("line", [])
 
     polylines = []
@@ -269,7 +460,7 @@ def fetch_mav_stations() -> List[Dict[str, Any]]:
 
 async def fetch_mav_station_details(station_name: str) -> Dict[str, Any]:
     """Lekéri egy adott vasútállomás (pl. Budapest-Keleti, Debrecen) élő menetrendjét és vágánykijelzőjét."""
-    cache_key = f"mav_station:{station_name}"
+    cache_key = f"mav_station_v2:{station_name}"
     cached = mav_station_cache.get(cache_key)
     if cached:
         return cached
@@ -294,12 +485,7 @@ async def fetch_mav_station_details(station_name: str) -> Dict[str, Any]:
     if not isinstance(html, str):
         html = str(html)
 
-    # Elvira onclick hívások átalakítása úgy, hogy a webes alkalmazás saját loadMavTrainDetails függvényét hívja meg
-    html = re.sub(
-        r"map\.getData\('TRAIN',\s*\{\s*v:\s*'([^']+)'(?:,\s*[^}]*)?\}\s*\)",
-        r"loadMavTrainDetails('\1', '')",
-        html
-    )
+    html = clean_mav_html(html)
 
     result = {
         "station": station_name,
