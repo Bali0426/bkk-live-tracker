@@ -13,11 +13,31 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 const linesLayer = L.layerGroup().addTo(map);
+const customRouteLayer = L.layerGroup().addTo(map);
 const stopGroupLayer = L.layerGroup().addTo(map);
 const stopLayer = L.layerGroup().addTo(map);
 const vehicleLayer = L.layerGroup().addTo(map);
 
-const activeModes = {
+// MÁV Rétegek
+const mavRailsLayer = L.layerGroup().addTo(map);
+const mavRouteLayer = L.layerGroup().addTo(map);
+const mavTrainLayer = L.layerGroup().addTo(map);
+const mavStationsLayer = L.layerGroup().addTo(map);
+
+let mavTrains = [];
+let mavStations = [];
+let showMavStations = true;
+let activeStationName = null;
+let showMavRails = false;
+let activeMavTrain = null;
+const activeMavCategories = {
+  on_time: true,
+  minor: true,
+  major: true,
+  ic_only: false
+};
+
+const activeVehicleModes = {
   SUBWAY: true,
   TRAM: true,
   TROLLEYBUS: true,
@@ -25,17 +45,51 @@ const activeModes = {
   RAIL: true
 };
 
-let showLines = false;
-let networkData = null;
+const activeLineModes = {
+  SUBWAY: true,
+  TRAM: true,
+  TROLLEYBUS: true,
+  BUS: true,
+  RAIL: true
+};
 
-function normalizeMode(type) {
-  if (!type) return 'BUS';
-  const t = String(type).toUpperCase();
-  if (t === 'SUBWAY' || t === 'METRO') return 'SUBWAY';
-  if (t === 'TRAM') return 'TRAM';
-  if (t === 'TROLLEYBUS') return 'TROLLEYBUS';
-  if (t === 'RAIL' || t === 'TRAIN' || t === 'HEV') return 'RAIL';
+let networkData = null;
+let activeTab = 'tabVehicles';
+
+function normalizeMode(type, shortName = '') {
+  const t = String(type || '').toUpperCase();
+  const s = String(shortName || '').toUpperCase();
+  if (t.includes('SUBURBAN') || t.includes('RAIL') || t.includes('TRAIN') || s.startsWith('H')) {
+    return 'RAIL';
+  }
+  if (t.includes('TROLLEY')) {
+    return 'TROLLEYBUS';
+  }
+  if (t.includes('SUBWAY') || t.includes('METRO') || s.startsWith('M')) {
+    return 'SUBWAY';
+  }
+  if (t.includes('TRAM')) {
+    return 'TRAM';
+  }
   return 'BUS';
+}
+
+function isRailwayStation(stop) {
+  if (!stop) return false;
+  const name = String(stop.name || '').toLowerCase();
+  const desc = String(stop.description || '').toLowerCase();
+  return name.includes('vasútállomás') ||
+         name.includes('pályaudvar') ||
+         name.includes('pu.') ||
+         name.includes('keleti') ||
+         name.includes('nyugati') ||
+         name.includes('déli') ||
+         name.includes('kelenföld') ||
+         name.includes('kőbánya-kispest') ||
+         name.includes('rákosrendező') ||
+         name.includes('hév-állomás') ||
+         desc.includes('vasútállomás') ||
+         desc.includes('pályaudvar');
 }
 
 function getHeaders() {
@@ -50,16 +104,15 @@ function showToast(msg) {
 }
 
 async function checkServerStatus() {
+  refreshAll();
   try {
     const res = await fetch('/api/status');
     const data = await res.json();
     if (!data.hasEnvApiKey && !customApiKey) {
       document.getElementById('settingsModal').classList.remove('hidden');
-    } else {
-      refreshAll();
     }
   } catch (e) {
-    console.error(e);
+    console.error('Status check error:', e);
   }
 }
 
@@ -74,60 +127,78 @@ async function fetchVehicles() {
       `/api/vehicles?lat=${center.lat}&lon=${center.lng}&lat_span=${latSpan}&lon_span=${lonSpan}`,
       { headers: getHeaders() }
     );
-    if (res.status === 401) {
-      document.getElementById('settingsModal').classList.remove('hidden');
+    if (!res.ok) {
+      console.warn('API error:', res.status);
+      showToast('Hiba a járművek lekérésekor: ' + res.status);
       return;
     }
-    if (!res.ok) throw new Error('API hiba');
     const data = await res.json();
     vehicles = data.vehicles || [];
     renderVehicles();
     document.getElementById('lastUpdated').textContent =
       'Frissítve: ' + new Date().toLocaleTimeString();
   } catch (err) {
+    console.error('fetchVehicles failed:', err);
     showToast('Hiba a járművek lekérésekor');
   }
 }
 
 function renderVehicles() {
   vehicleLayer.clearLayers();
-  const q = document.getElementById('routeFilter').value.trim().toLowerCase();
+  const filterInput = document.getElementById('routeFilter');
+  const q = filterInput ? filterInput.value.trim().toLowerCase() : '';
   let count = 0;
 
   vehicles.forEach(v => {
-    const mode = normalizeMode(v.routeType);
-    if (!activeModes[mode]) return;
+    try {
+      if (!v.lat || !v.lon) return;
 
-    const shortName = String(v.routeShortName || '').toLowerCase();
-    const headsign = String(v.headsign || '').toLowerCase();
-    if (q && !shortName.includes(q) && !headsign.includes(q)) return;
+      const mode = normalizeMode(v.routeType, v.routeShortName);
+      if (!activeVehicleModes[mode]) return;
 
-    count++;
-    const name = String(v.routeShortName || '');
-    const isLong = name.length > 3;
-    const width = isLong ? Math.max(34, name.length * 8 + 10) : 28;
-    const height = 28;
-    const icon = L.divIcon({
-      className: '',
-      html: `<div class="v-marker" style="min-width:${width}px;height:${height}px;background:${v.color};color:${v.textColor};">${name}</div>`,
-      iconSize: [width, height],
-      iconAnchor: [width / 2, height / 2]
-    });
+      const shortName = String(v.routeShortName || '').toLowerCase();
+      const headsign = String(v.headsign || '').toLowerCase();
+      if (q && !shortName.includes(q) && !headsign.includes(q)) return;
 
-    const m = L.marker([v.lat, v.lon], { icon });
-    m.bindPopup(`
-      <div style="font-size:13px;line-height:1.5;">
-        <strong>${v.routeShortName} → ${v.headsign || 'N/A'}</strong><br>
-        Rendszám: <b>${v.licensePlate || 'N/A'}</b><br>
-        Sebesség: ${v.speedKmh} km/h<br>
-        Típus: ${v.model || v.routeType}<br>
-        <button class="btn btn-secondary" style="margin-top:8px;width:100%;font-size:11px;" onclick="loadAndDrawRoute('${v.routeId || v.routeShortName}')">🛤️ Nyomvonal kirajzolása</button>
-      </div>
-    `);
-    vehicleLayer.addLayer(m);
+      count++;
+      let name = String(v.routeShortName || '').trim();
+      if (name.length > 8) {
+        name = name.slice(0, 8);
+      }
+      if (!name) {
+        name = v.licensePlate || '•';
+      }
+
+      const isLong = name.length > 3;
+      const width = isLong ? Math.max(34, name.length * 8 + 10) : 28;
+      const height = 28;
+      const icon = L.divIcon({
+        className: 'vehicle-div-icon',
+        html: `<div class="v-marker" style="min-width:${width}px;height:${height}px;background:${v.color || '#009EE3'};color:${v.textColor || '#FFFFFF'};">${name}</div>`,
+        iconSize: [width, height],
+        iconAnchor: [width / 2, height / 2]
+      });
+
+      const m = L.marker([v.lat, v.lon], { icon, zIndexOffset: 1000 });
+      m.bindPopup(`
+        <div style="font-size:13px;line-height:1.5;">
+          <strong>${v.routeShortName || 'Járat'} → ${v.headsign || 'N/A'}</strong><br>
+          Rendszám: <b>${v.licensePlate || 'N/A'}</b><br>
+          Sebesség: ${v.speedKmh || 0} km/h<br>
+          Típus: ${v.model || v.routeType || 'N/A'}<br>
+          <button class="btn btn-secondary" style="margin-top:8px;width:100%;font-size:11px;" onclick="loadAndDrawRoute('${v.routeId || v.routeShortName}')">🛤️ Nyomvonal kirajzolása</button>
+        </div>
+      `);
+      vehicleLayer.addLayer(m);
+    } catch (err) {
+      console.error('Error rendering vehicle:', err, v);
+    }
   });
 
-  document.getElementById('vehicleStats').textContent = `${count} jármű látható`;
+  const statsEl = document.getElementById('vehicleStats');
+  if (statsEl) {
+    statsEl.textContent = `${count} jármű látható`;
+  }
 }
 
 // Távolságméter számítás két koordináta között
@@ -352,12 +423,17 @@ async function fetchStops() {
     // 2. Egyedi megálló jelölők felrajzolása
     stopsList.forEach(s => {
       const isParent = Boolean(s.isStopArea || s.locationType === 1);
+      const isTrainStation = isRailwayStation(s);
       
       let markerHtml = '';
       let iconSize = [13, 13];
       let iconAnchor = [6.5, 6.5];
       
-      if (isParent) {
+      if (isTrainStation) {
+        iconSize = [24, 24];
+        iconAnchor = [12, 12];
+        markerHtml = `<div class="stop-marker stop-marker-train-station" title="${s.name} (Vasútállomás)">🚉</div>`;
+      } else if (isParent) {
         iconSize = [20, 20];
         iconAnchor = [10, 10];
         markerHtml = `<div class="stop-marker stop-marker-parent" title="${s.name} (Gyűjtőállomás)">🏢</div>`;
@@ -374,11 +450,16 @@ async function fetchStops() {
         iconAnchor: iconAnchor
       });
 
-      const marker = L.marker([s.lat, s.lon], { icon });
+      const marker = L.marker([s.lat, s.lon], { icon, zIndexOffset: isTrainStation ? 700 : (isParent ? 500 : 0) });
       
-      const badgeHtml = isParent
-        ? `<span class="stop-badge stop-badge-parent">🏢 Gyűjtőmegálló</span>`
-        : `<span class="stop-badge stop-badge-dir">🚏 Per-irány megálló${s.direction ? ` (${s.direction}°)` : ''}</span>`;
+      let badgeHtml = '';
+      if (isTrainStation) {
+        badgeHtml = `<span class="stop-badge stop-badge-rail-station">🚉 Vasútállomás / Pályaudvar</span>`;
+      } else if (isParent) {
+        badgeHtml = `<span class="stop-badge stop-badge-parent">🏢 Gyűjtőmegálló</span>`;
+      } else {
+        badgeHtml = `<span class="stop-badge stop-badge-dir">🚏 Per-irány megálló${s.direction ? ` (${s.direction}°)` : ''}</span>`;
+      }
       
       const typeInfo = s.type ? `<span style="color:#94a3b8;font-size:11px;"> • ${s.type}</span>` : '';
 
@@ -391,10 +472,23 @@ async function fetchStops() {
         </div>
       `, {
         direction: 'top',
-        offset: isParent ? [0, -10] : [0, -7]
+        offset: isTrainStation ? [0, -12] : (isParent ? [0, -10] : [0, -7])
       });
 
-      marker.on('click', () => loadStopDepartures(s.stopId));
+      if (isTrainStation) {
+        marker.bindPopup(`
+          <div style="font-size:13px;line-height:1.5;min-width:230px;">
+            <strong style="color:#f59e0b;font-size:14px;">🚉 ${s.name}</strong><br>
+            <span style="color:#94a3b8;font-size:11px;">Kiemelt vasútállomás</span>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <button class="btn btn-secondary" style="flex:1;font-size:11px;padding:6px;" onclick="loadStopDepartures('${s.stopId}')">🚏 BKK Indulások</button>
+              <button class="btn btn-primary" style="flex:1;font-size:11px;padding:6px;" onclick="loadMavStationDetails('${s.name}')">🚆 MÁV Menetrend</button>
+            </div>
+          </div>
+        `);
+      } else {
+        marker.on('click', () => loadStopDepartures(s.stopId));
+      }
       stopLayer.addLayer(marker);
     });
   } catch (e) {
@@ -444,49 +538,64 @@ async function loadStopDepartures(stopId) {
   }
 }
 
-// Vonalhálózat kezelése
-async function toggleTransitNetwork() {
-  showLines = !showLines;
-  const btn = document.getElementById('btnToggleLines');
-  if (btn) btn.classList.toggle('active', showLines);
+// Tab kezelés
+function switchTab(tabId) {
+  activeTab = tabId;
+  const isVeh = (tabId === 'tabVehicles');
+  const isLines = (tabId === 'tabLines');
+  const isMav = (tabId === 'tabMav');
+  const isStations = (tabId === 'tabStations');
 
-  if (!showLines) {
-    linesLayer.clearLayers();
-    showToast('🛤️ Vonalhálózat kikapcsolva');
-    return;
+  document.getElementById('tabVehiclesBtn').classList.toggle('active', isVeh);
+  document.getElementById('tabLinesBtn').classList.toggle('active', isLines);
+  document.getElementById('tabMavBtn').classList.toggle('active', isMav);
+  document.getElementById('tabStationsBtn').classList.toggle('active', isStations);
+
+  document.getElementById('tabVehicles').classList.toggle('hidden', !isVeh);
+  document.getElementById('tabLines').classList.toggle('hidden', !isLines);
+  document.getElementById('tabMav').classList.toggle('hidden', !isMav);
+  document.getElementById('tabStations').classList.toggle('hidden', !isStations);
+
+  if (isLines && !networkData) {
+    loadTransitNetwork();
+  } else if (isMav && mavTrains.length === 0) {
+    fetchMavTrains();
+  } else if (isStations && mavStations.length === 0) {
+    fetchMavStations();
   }
+}
 
-  showToast('🛤️ Vonalhálózat betöltése...');
+// Vonalhálózat kezelése
+async function loadTransitNetwork() {
   if (!networkData) {
     try {
+      showToast('🛤️ Vonalhálózat letöltése...');
       const res = await fetch('/api/network', { headers: getHeaders() });
       if (!res.ok) throw new Error('Hálózat betöltési hiba');
       networkData = await res.json();
     } catch (e) {
       console.error(e);
       showToast('Nem sikerült betölteni a vonalhálózatot');
-      showLines = false;
-      if (btn) btn.classList.remove('active');
       return;
     }
   }
-
   renderTransitNetwork();
-  showToast('🛤️ Metró- és főbb villamosvonalak megjelenítve');
 }
 
 function renderTransitNetwork() {
-  if (!showLines || !networkData || !networkData.routes) return;
+  if (!networkData || !networkData.routes) return;
   linesLayer.clearLayers();
+  let drawnCount = 0;
 
   networkData.routes.forEach(route => {
-    const mode = normalizeMode(route.type);
-    if (!activeModes[mode]) return;
+    const mode = normalizeMode(route.type, route.shortName);
+    if (!activeLineModes[mode]) return;
+    drawnCount++;
 
     (route.polylines || []).forEach(variant => {
       if (!variant.coordinates || variant.coordinates.length === 0) return;
 
-      // Glow / kontraszt háttér sötét térképen
+      // Háttér sötét sáv a kontraszthoz
       const glowLine = L.polyline(variant.coordinates, {
         color: '#000000',
         weight: 6,
@@ -497,7 +606,7 @@ function renderTransitNetwork() {
       });
       linesLayer.addLayer(glowLine);
 
-      // Fő színes nyomvonal (hivatalos BKK vonalszín)
+      // Fő vonal hivatalos BKK vonalszínnel
       const poly = L.polyline(variant.coordinates, {
         color: route.color || '#3b82f6',
         weight: 4,
@@ -518,47 +627,45 @@ function renderTransitNetwork() {
       linesLayer.addLayer(poly);
     });
   });
+
+  const statEl = document.getElementById('linesStats');
+  if (statEl) {
+    statEl.textContent = `${drawnCount} járat nyomvonala látható`;
+  }
 }
 
-let activeRoutePolyline = null;
 async function loadAndDrawRoute(routeId) {
   if (!routeId) return;
   try {
-    showToast(`🛤️ Nyomvonal betöltése: ${routeId}...`);
+    showToast(`🛤️ Nyomvonal keresése: ${routeId}...`);
     const res = await fetch(`/api/routes/${encodeURIComponent(routeId)}`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Járat nem található');
     const data = await res.json();
 
     if (!data.polylines || data.polylines.length === 0) {
-      showToast('Nincs elérhető nyomvonal ehhez a járathoz');
+      showToast('Nincs elérhető nyomvonal ehhez a járathoz: ' + routeId);
       return;
     }
 
-    if (activeRoutePolyline) {
-      map.removeLayer(activeRoutePolyline);
-      activeRoutePolyline = null;
-    }
+    customRouteLayer.clearLayers();
 
-    const group = L.featureGroup();
     data.polylines.forEach(v => {
       if (!v.coordinates || v.coordinates.length === 0) return;
 
-      // Háttér sáv
       const bg = L.polyline(v.coordinates, {
         color: '#000000',
-        weight: 7,
-        opacity: 0.6,
+        weight: 8,
+        opacity: 0.7,
         lineCap: 'round',
         lineJoin: 'round',
         interactive: false
       });
-      group.addLayer(bg);
+      customRouteLayer.addLayer(bg);
 
-      // Fő vonal
       const poly = L.polyline(v.coordinates, {
         color: data.color || '#38bdf8',
-        weight: 4.5,
-        opacity: 0.95,
+        weight: 5,
+        opacity: 1,
         lineCap: 'round',
         lineJoin: 'round'
       });
@@ -566,13 +673,19 @@ async function loadAndDrawRoute(routeId) {
         `<strong style="color:${data.color}">${data.shortName}</strong> → ${v.headsign || v.name}`,
         { className: 'transit-line-tooltip', sticky: true }
       );
-      group.addLayer(poly);
+      customRouteLayer.addLayer(poly);
     });
 
-    group.addTo(map);
-    activeRoutePolyline = group;
-    map.fitBounds(group.getBounds(), { padding: [40, 40] });
+    const bounds = customRouteLayer.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
     showToast(`🛤️ ${data.shortName} nyomvonala kirajzolva!`);
+
+    // Átváltunk a vonalak fülre
+    switchTab('tabLines');
+    const customInp = document.getElementById('customRouteInput');
+    if (customInp) customInp.value = data.shortName;
   } catch (e) {
     console.error(e);
     showToast(`Hiba a járat nyomvonalának betöltésekor: ${routeId}`);
@@ -580,29 +693,480 @@ async function loadAndDrawRoute(routeId) {
 }
 window.loadAndDrawRoute = loadAndDrawRoute;
 
+// MÁV Vonatok Lekérése és Megjelenítése
+async function fetchMavTrains() {
+  try {
+    const res = await fetch('/api/mav/trains');
+    if (!res.ok) {
+      console.warn('MÁV API hiba:', res.status);
+      return;
+    }
+    const data = await res.json();
+    mavTrains = data.trains || [];
+    renderMavTrains();
+
+    const statsEl = document.getElementById('mavStats');
+    if (statsEl) {
+      statsEl.textContent = `${mavTrains.length} vonat a hálózaton`;
+    }
+    const avgDelayEl = document.getElementById('mavAvgDelay');
+    if (avgDelayEl) {
+      avgDelayEl.textContent = `Átl. késés: ${data.avgDelay || 0} perc`;
+    }
+  } catch (err) {
+    console.error('fetchMavTrains failed:', err);
+  }
+}
+
+function renderMavTrains() {
+  mavTrainLayer.clearLayers();
+  const filterInput = document.getElementById('mavFilter');
+  const q = filterInput ? filterInput.value.trim().toLowerCase() : '';
+  let count = 0;
+
+  mavTrains.forEach(t => {
+    try {
+      if (!t.lat || !t.lon) return;
+
+      // Kategória és IC szűrés
+      if (activeMavCategories.ic_only && !t.isIC) return;
+      if (!activeMavCategories[t.category]) return;
+
+      // Kereső mező (vonatszám vagy viszonylat)
+      if (q) {
+        const trainNum = String(t.trainNumber || '').toLowerCase();
+        const rel = String(t.relation || '').toLowerCase();
+        if (!trainNum.includes(q) && !rel.includes(q)) return;
+      }
+
+      count++;
+      const displayName = t.trainNumber || 'Vonat';
+      const delayBadgeText = t.delay <= 0 ? '0p' : `+${t.delay}p`;
+
+      const icon = L.divIcon({
+        className: 'mav-div-icon',
+        html: `
+          <div class="mav-marker" title="${t.trainNumber} - ${t.relation} (${t.statusText})">
+            <span class="mav-icon-tag">🚆</span>
+            <span class="mav-name-tag">${displayName}</span>
+            <span class="mav-delay-pill" style="background:${t.color};color:${t.textColor};">${delayBadgeText}</span>
+          </div>
+        `,
+        iconAnchor: [35, 14]
+      });
+
+      const m = L.marker([t.lat, t.lon], { icon, zIndexOffset: 950 });
+
+      m.bindPopup(`
+        <div style="font-size:13px;line-height:1.5;min-width:240px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <strong style="font-size:15px;color:#38bdf8;">🚆 ${t.trainNumber}</strong>
+            <span class="mav-delay-pill" style="background:${t.color};color:${t.textColor};font-weight:bold;padding:2px 6px;">${t.statusText}</span>
+          </div>
+          <div style="color:#f8fafc;font-size:12px;margin-bottom:6px;">
+            <strong>${t.relation}</strong>
+          </div>
+          <div style="color:#94a3b8;font-size:11px;margin-bottom:10px;">
+            Menetvonal: <b>${t.menetvonal}</b>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary" style="flex:1;font-size:11px;padding:6px 8px;" onclick="loadMavTrainDetails('${t.elviraId}', '${t.trainNumber}', '${encodeURIComponent(t.relation)}')">📋 Menetrend</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:6px 8px;" onclick="loadAndDrawMavRoute('${t.elviraId}', '${t.trainNumber}')">🛤️ Nyomvonal</button>
+          </div>
+        </div>
+      `);
+
+      mavTrainLayer.addLayer(m);
+    } catch (err) {
+      console.error('Error rendering mav train:', err, t);
+    }
+  });
+
+  const statsEl = document.getElementById('mavStats');
+  if (statsEl) {
+    statsEl.textContent = `${count} / ${mavTrains.length} vonat látható`;
+  }
+}
+
+// MÁV Menetrend és közbenső állomások lekérése
+async function loadMavTrainDetails(elviraId, trainNumber, encodedRelation = '', silent = false) {
+  if (!elviraId) return;
+  const relation = encodedRelation ? decodeURIComponent(encodedRelation) : (activeMavTrain ? activeMavTrain.relation : '');
+  activeMavTrain = { elviraId, trainNumber, relation };
+
+  try {
+    if (!silent) {
+      showToast(`🚆 ${trainNumber} menetrendjének betöltése...`);
+    }
+    const res = await fetch(`/api/mav/trains/${encodeURIComponent(elviraId)}?train_number=${encodeURIComponent(trainNumber || '')}`);
+    if (!res.ok) throw new Error('Menetrend nem tölthető be');
+    const data = await res.json();
+
+    document.getElementById('futarBoard').classList.add('hidden');
+    const board = document.getElementById('mavBoard');
+    board.classList.remove('hidden');
+
+    document.getElementById('mavBoardTrainName').textContent = `🚆 ${trainNumber || 'MÁV Járat'}`;
+    document.getElementById('mavBoardRelation').textContent = relation || '';
+
+    const listEl = document.getElementById('mavBoardTimetableList');
+    if (data.html) {
+      listEl.innerHTML = data.html;
+      listEl.querySelectorAll('a').forEach(a => {
+        a.removeAttribute('onclick');
+        a.style.cursor = 'default';
+      });
+    } else {
+      listEl.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;">Nincs elérhető menetrend adat ehhez a járathoz.</div>';
+    }
+
+    if (data.polylines && data.polylines.length > 0) {
+      drawMavTrainPolylines(data.polylines, trainNumber, !silent);
+    }
+  } catch (err) {
+    console.error(err);
+    if (!silent) {
+      showToast(`Nem sikerült betölteni a menetrendet: ${trainNumber}`);
+    }
+  }
+}
+window.loadMavTrainDetails = loadMavTrainDetails;
+
+// MÁV nyomvonal kirajzolása
+async function loadAndDrawMavRoute(elviraId, trainNumber) {
+  if (!elviraId) return;
+  try {
+    showToast(`🛤️ ${trainNumber} nyomvonalának lekérése...`);
+    const res = await fetch(`/api/mav/trains/${encodeURIComponent(elviraId)}?train_number=${encodeURIComponent(trainNumber || '')}`);
+    if (!res.ok) throw new Error('Nyomvonal nem található');
+    const data = await res.json();
+
+    if (!data.polylines || data.polylines.length === 0) {
+      showToast('Nincs elérhető nyomvonal ehhez a vonathoz: ' + trainNumber);
+      return;
+    }
+
+    drawMavTrainPolylines(data.polylines, trainNumber, true);
+    showToast(`🛤️ ${trainNumber} nyomvonala kirajzolva!`);
+  } catch (err) {
+    console.error(err);
+    showToast('Hiba a nyomvonal betöltésekor: ' + trainNumber);
+  }
+}
+window.loadAndDrawMavRoute = loadAndDrawMavRoute;
+
+function drawMavTrainPolylines(polylines, trainNumber, fitBounds = false) {
+  mavRouteLayer.clearLayers();
+
+  polylines.forEach(p => {
+    if (!p.coordinates || p.coordinates.length === 0) return;
+
+    const bg = L.polyline(p.coordinates, {
+      color: '#000000',
+      weight: 7,
+      opacity: 0.7,
+      lineCap: 'round',
+      lineJoin: 'round',
+      interactive: false
+    });
+    mavRouteLayer.addLayer(bg);
+
+    const line = L.polyline(p.coordinates, {
+      color: '#38bdf8',
+      weight: 4.5,
+      opacity: 0.95,
+      lineCap: 'round',
+      lineJoin: 'round'
+    });
+    line.bindTooltip(`<strong>🚆 ${trainNumber}</strong> nyomvonala`, { sticky: true });
+    mavRouteLayer.addLayer(line);
+  });
+
+  if (fitBounds) {
+    const bounds = mavRouteLayer.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }
+}
+
+// Vasúti hálózat vágányainak be/kikapcsolása
+async function toggleMavRails() {
+  showMavRails = !showMavRails;
+  const btn = document.getElementById('btnToggleMavRails');
+  if (btn) btn.classList.toggle('active', showMavRails);
+
+  if (!showMavRails) {
+    mavRailsLayer.clearLayers();
+    showToast('Vasútvonalak elrejtve');
+    return;
+  }
+
+  showToast('🛤️ MÁV vasúthálózat letöltése...');
+  try {
+    const res = await fetch('/api/mav/network');
+    if (!res.ok) throw new Error('Vasúthálózat hiba');
+    const data = await res.json();
+    mavRailsLayer.clearLayers();
+
+    (data.lines || []).forEach(seg => {
+      if (!seg.coordinates || seg.coordinates.length === 0) return;
+
+      const track = L.polyline(seg.coordinates, {
+        color: '#64748b',
+        weight: 2.2,
+        opacity: 0.75,
+        dashArray: '5, 5',
+        lineCap: 'round'
+      });
+
+      if (seg.lineNum) {
+        track.bindTooltip(`Vasútvonal: <b>${seg.lineNum}</b>`, { sticky: true });
+      }
+      mavRailsLayer.addLayer(track);
+    });
+    showToast(`🛤️ ${data.count || 0} vasúti szakasz betöltve!`);
+  } catch (err) {
+    console.error(err);
+    showToast('Hiba a vasúthálózat betöltésekor');
+  }
+}
+
+// 🚉 Vasútállomások Kezelése
+async function fetchMavStations() {
+  try {
+    const res = await fetch('/api/mav/stations');
+    if (!res.ok) return;
+    const data = await res.json();
+    mavStations = data.stations || [];
+    renderMavStations();
+    const statsEl = document.getElementById('stationTabStats');
+    if (statsEl) {
+      statsEl.textContent = `${mavStations.length} vasútállomás a térképen`;
+    }
+  } catch (err) {
+    console.error('fetchMavStations failed:', err);
+  }
+}
+
+function renderMavStations() {
+  mavStationsLayer.clearLayers();
+  if (!showMavStations) return;
+
+  mavStations.forEach(s => {
+    try {
+      if (!s.lat || !s.lon) return;
+
+      const icon = L.divIcon({
+        className: 'station-div-icon',
+        html: `
+          <div class="station-map-marker ${s.isMajor ? 'major-station' : ''}" title="${s.name} (${s.city})">
+            <span>${s.isMajor ? '🏛️' : '🚉'}</span>
+            <span>${s.shortName}</span>
+          </div>
+        `,
+        iconAnchor: [30, 14]
+      });
+
+      const m = L.marker([s.lat, s.lon], { icon, zIndexOffset: s.isMajor ? 850 : 800 });
+
+      m.bindPopup(`
+        <div style="font-size:13px;line-height:1.5;min-width:230px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <strong style="font-size:15px;color:#f59e0b;">${s.isMajor ? '🏛️' : '🚉'} ${s.name}</strong>
+          </div>
+          <div style="color:#cbd5e1;font-size:12px;margin-bottom:10px;">
+            Város: <b>${s.city}</b> ${s.isMajor ? '• Kiemelt Főpályaudvar' : '• Vasútállomás'}
+          </div>
+          <button class="btn btn-primary" style="width:100%;font-size:12px;padding:6px 10px;" onclick="loadMavStationDetails('${s.name}')">📋 Állomási menetrend megnyitása</button>
+        </div>
+      `);
+
+      mavStationsLayer.addLayer(m);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
+async function loadMavStationDetails(stationName, silent = false) {
+  if (!stationName) return;
+  activeStationName = stationName.trim();
+  const inp = document.getElementById('stationSearchInput');
+  if (inp) inp.value = activeStationName;
+
+  // Ha ismert állomás, odarepítjük a térképet
+  if (!silent && mavStations.length > 0) {
+    const known = mavStations.find(s => 
+      s.name.toLowerCase() === activeStationName.toLowerCase() || 
+      s.shortName.toLowerCase() === activeStationName.toLowerCase() ||
+      activeStationName.toLowerCase().includes(s.shortName.toLowerCase())
+    );
+    if (known) {
+      map.flyTo([known.lat, known.lon], 14);
+    }
+  }
+
+  try {
+    if (!silent) {
+      showToast(`🚉 ${activeStationName} menetrendjének betöltése...`);
+    }
+    const res = await fetch(`/api/mav/stations/${encodeURIComponent(activeStationName)}`);
+    if (!res.ok) throw new Error('Nem sikerült betölteni az állomást');
+    const data = await res.json();
+
+    document.getElementById('futarBoard').classList.add('hidden');
+    const board = document.getElementById('mavBoard');
+    board.classList.remove('hidden');
+
+    document.getElementById('mavBoardSubtitle').textContent = 'MÁV-START ÉLŐ ÁLLOMÁSI MENETREND';
+    document.getElementById('mavBoardTrainName').textContent = `🚉 ${data.station || activeStationName}`;
+    document.getElementById('mavBoardRelation').textContent = 'Élő indulások és érkezések • Vágánykijelző';
+    const footerText = document.getElementById('mavBoardFooterText');
+    if (footerText) {
+      footerText.textContent = 'Kattints bármely vonatszámra az útvonal és térképi nyomvonal megtekintéséhez!';
+    }
+
+    const listEl = document.getElementById('mavBoardTimetableList');
+    if (data.html) {
+      listEl.innerHTML = data.html;
+    } else {
+      listEl.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;">Nincs elérhető menetrendi adat ehhez az állomáshoz.</div>';
+    }
+
+    if (!silent) {
+      showToast(`🚉 ${activeStationName} menetrendje betöltve!`);
+    }
+  } catch (err) {
+    console.error(err);
+    if (!silent) {
+      showToast(`Hiba az állomás betöltésekor: ${activeStationName}`);
+    }
+  }
+}
+window.loadMavStationDetails = loadMavStationDetails;
+
 function refreshAll() {
   fetchVehicles();
   if (showStops) fetchStops();
   if (activeStopId) loadStopDepartures(activeStopId);
+  if (activeTab === 'tabMav' || mavTrains.length > 0) fetchMavTrains();
+  if (activeMavTrain) loadMavTrainDetails(activeMavTrain.elviraId, activeMavTrain.trainNumber, activeMavTrain.relation, true);
+  if (activeStationName) loadMavStationDetails(activeStationName, true);
 }
 
 // Eseménykezelők
 document.getElementById('routeFilter').addEventListener('input', renderVehicles);
 document.getElementById('btnRefresh').addEventListener('click', refreshAll);
 
-const btnLines = document.getElementById('btnToggleLines');
-if (btnLines) {
-  btnLines.addEventListener('click', toggleTransitNetwork);
+// Fülváltás
+document.getElementById('tabVehiclesBtn').addEventListener('click', () => switchTab('tabVehicles'));
+document.getElementById('tabLinesBtn').addEventListener('click', () => switchTab('tabLines'));
+document.getElementById('tabMavBtn').addEventListener('click', () => switchTab('tabMav'));
+document.getElementById('tabStationsBtn').addEventListener('click', () => switchTab('tabStations'));
+
+// Vasútállomások vezérlők
+document.getElementById('btnSearchStation').addEventListener('click', () => {
+  const val = document.getElementById('stationSearchInput').value.trim();
+  if (val) loadMavStationDetails(val);
+});
+document.getElementById('stationSearchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const val = e.target.value.trim();
+    if (val) loadMavStationDetails(val);
+  }
+});
+
+document.querySelectorAll('.chip-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    loadMavStationDetails(btn.dataset.station);
+  });
+});
+
+const toggleStationsSw = document.getElementById('toggleMavStationsSwitch');
+if (toggleStationsSw) {
+  toggleStationsSw.addEventListener('change', (e) => {
+    showMavStations = e.target.checked;
+    renderMavStations();
+  });
 }
 
-document.querySelectorAll('.mode-chip').forEach(chip => {
-  chip.addEventListener('click', () => {
-    const mode = chip.dataset.mode;
-    activeModes[mode] = !activeModes[mode];
-    chip.classList.toggle('active', activeModes[mode]);
-    renderVehicles();
-    if (showLines) renderTransitNetwork();
+const btnFitAllSt = document.getElementById('btnFitAllStations');
+if (btnFitAllSt) {
+  btnFitAllSt.addEventListener('click', () => {
+    map.flyTo([47.1625, 19.5033], 8);
+    showToast('🇭🇺 Teljes országos állomáshálózat');
   });
+}
+
+// MÁV vezérlők
+document.getElementById('mavFilter').addEventListener('input', renderMavTrains);
+document.getElementById('btnToggleMavRails').addEventListener('click', toggleMavRails);
+const btnFitMav = document.getElementById('btnFitMavTrains');
+if (btnFitMav) {
+  btnFitMav.addEventListener('click', () => {
+    map.flyTo([47.1625, 19.5033], 8);
+    showToast('🇭🇺 Teljes országos vasúti nézet');
+  });
+}
+
+document.getElementById('btnCloseMavBoard').addEventListener('click', () => {
+  document.getElementById('mavBoard').classList.add('hidden');
+  mavRouteLayer.clearLayers();
+  activeMavTrain = null;
+});
+
+document.querySelectorAll('.mav-toggle-switch').forEach(sw => {
+  sw.addEventListener('change', (e) => {
+    const cat = e.target.dataset.category;
+    activeMavCategories[cat] = e.target.checked;
+    renderMavTrains();
+  });
+});
+
+// Sima Toggle kapcsolók (Switch toggles)
+document.querySelectorAll('.mode-toggle-switch').forEach(sw => {
+  sw.addEventListener('change', (e) => {
+    const type = e.target.dataset.type;
+    const mode = e.target.dataset.mode;
+    if (type === 'vehicle') {
+      activeVehicleModes[mode] = e.target.checked;
+      renderVehicles();
+    } else if (type === 'line') {
+      activeLineModes[mode] = e.target.checked;
+      renderTransitNetwork();
+    }
+  });
+});
+
+// Egyedi nyomvonal kirajzolás és törlés
+document.getElementById('btnDrawRoute').addEventListener('click', () => {
+  const val = document.getElementById('customRouteInput').value.trim();
+  if (val) loadAndDrawRoute(val);
+});
+document.getElementById('customRouteInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const val = e.target.value.trim();
+    if (val) loadAndDrawRoute(val);
+  }
+});
+
+document.getElementById('btnClearCustomRoute').addEventListener('click', () => {
+  customRouteLayer.clearLayers();
+  document.getElementById('customRouteInput').value = '';
+  showToast('Egyedi nyomvonal törölve');
+});
+
+// Összes vonal elrejtése / mutatása kapcsoló
+let allLinesShown = true;
+document.getElementById('btnToggleAllLines').addEventListener('click', () => {
+  allLinesShown = !allLinesShown;
+  document.querySelectorAll('.mode-toggle-switch[data-type="line"]').forEach(sw => {
+    sw.checked = allLinesShown;
+    activeLineModes[sw.dataset.mode] = allLinesShown;
+  });
+  document.getElementById('btnToggleAllLines').textContent = allLinesShown ? 'Összes elrejtése' : 'Összes mutatása';
+  renderTransitNetwork();
 });
 
 document.getElementById('btnToggleStops').addEventListener('click', (e) => {
@@ -691,4 +1255,5 @@ map.on('moveend', () => {
 });
 
 checkServerStatus();
+fetchMavStations();
 setInterval(refreshAll, 10000);

@@ -13,6 +13,13 @@ from app.services.futar_client import (
     fetch_transit_network
 )
 from app.services.gtfs_rt_client import fetch_gtfs_rt_vehicle_positions
+from app.services.mav_client import (
+    fetch_mav_trains,
+    fetch_mav_train_details,
+    fetch_mav_network,
+    fetch_mav_stations,
+    fetch_mav_station_details
+)
 
 app = FastAPI(
     title="BKK Live Tracker & DIY API",
@@ -154,3 +161,56 @@ async def get_gtfs_rt_vehicles(
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"GTFS-RT hiba: {str(e)}")
+
+
+@app.get("/api/mav/trains")
+async def get_mav_trains():
+    """Lekéri az összes magyarországi MÁV és GYSEV vonat élő GPS koordinátáját és késését."""
+    try:
+        return await fetch_mav_trains()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MÁV API hiba: {str(e)}")
+
+
+@app.get("/api/mav/trains/{elvira_id}")
+async def get_mav_train_details(
+    elvira_id: str,
+    train_number: Optional[str] = Query(None, description="Vonatszám (pl. 55149 vagy IC 514)")
+):
+    """Lekéri egy adott MÁV járat élő menetrendjét, közbenső állomásait, vágányszámait és térképi nyomvonalát."""
+    try:
+        return await fetch_mav_train_details(elvira_id, train_number)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MÁV menetrend hiba: {str(e)}")
+
+
+@app.get("/api/mav/network")
+async def get_mav_network(
+    sw_lat: float = Query(45.7, description="Dél-nyugati sarok szélesség"),
+    sw_lon: float = Query(16.1, description="Dél-nyugati sarok hosszúság"),
+    ne_lat: float = Query(48.6, description="Észak-keleti sarok szélesség"),
+    ne_lon: float = Query(22.9, description="Észak-keleti sarok hosszúság"),
+    zoom: int = Query(10, description="Térkép zoom szint")
+):
+    """Lekéri a magyarországi vasúthálózat vágánynyomvonalait a térképre."""
+    try:
+        return await fetch_mav_network(sw_lat, sw_lon, ne_lat, ne_lon, zoom)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MÁV vasúthálózat hiba: {str(e)}")
+
+
+@app.get("/api/mav/stations")
+async def get_mav_stations():
+    """Visszaadja a főbb magyarországi vasútállomások listáját és koordinátáit a térképhez."""
+    return {"stations": fetch_mav_stations()}
+
+
+@app.get("/api/mav/stations/{station_name}")
+async def get_mav_station_details(station_name: str):
+    """Lekéri egy adott vasútállomás (pl. Budapest-Keleti, Debrecen, Győr) élő menetrendjét és vágánykijelzőjét."""
+    try:
+        return await fetch_mav_station_details(station_name)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MÁV állomás menetrend hiba: {str(e)}")
+
+

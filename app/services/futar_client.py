@@ -1,5 +1,6 @@
 import time
 import math
+import asyncio
 from typing import Dict, Any, Optional
 import httpx
 from app.config import settings
@@ -9,6 +10,9 @@ class SimpleTTLCache:
     def __init__(self, ttl_seconds: int = 8):
         self.ttl = ttl_seconds
         self._store: Dict[str, tuple[float, Any]] = {}
+
+    def clear(self):
+        self._store.clear()
 
     def get(self, key: str) -> Optional[Any]:
         if key in self._store:
@@ -48,10 +52,13 @@ def get_route_colors(route: Dict[str, Any]) -> tuple[str, str]:
     bg = route.get("color")
     text = route.get("textColor")
 
-    if bg and text:
-        return format_hex_color(bg, "#009EE3"), format_hex_color(text, "#FFFFFF")
+    # HÉV színek (H5: lila/magenta, H6: olajzöld, H7: narancs, H8/H9: rózsaszín / hivatalos BKK zöld: #007B3B)
+    if "SUBURBAN" in route_type or "RAIL" in route_type or short_name.startswith("H"):
+        if bg and text:
+            return format_hex_color(bg, "#007B3B"), format_hex_color(text, "#FFFFFF")
+        return "#007B3B", "#FFFFFF"
 
-    # Hivatalos BKK alapszínek feloldása:
+    # Metrók
     if "SUBWAY" in route_type or short_name.startswith("M"):
         if "1" in short_name:
             return "#FFD800", "#000000"
@@ -62,18 +69,24 @@ def get_route_colors(route: Dict[str, Any]) -> tuple[str, str]:
         elif "4" in short_name:
             return "#4CA22F", "#FFFFFF"
         return "#005CA5", "#FFFFFF"
-    elif "TRAM" in route_type:
+
+    # Villamosok
+    if "TRAM" in route_type:
         return "#FFD800", "#000000"
-    elif "TROLLEY" in route_type:
+
+    # Trolibuszok
+    if "TROLLEY" in route_type:
         return "#E41F18", "#FFFFFF"
-    elif "RAIL" in route_type or "SUBURBAN" in route_type or short_name.startswith("H"):
-        if short_name.startswith("H"):
-            return "#007B3B", "#FFFFFF"
-        return "#2E5EA8", "#FFFFFF"
-    elif short_name.startswith("9"):
+
+    # Éjszakai buszok
+    if short_name.startswith("9") and len(short_name) == 3:
         return "#1E293B", "#FFFFFF"
 
-    return format_hex_color(bg, "#009EE3"), format_hex_color(text, "#FFFFFF")
+    # Ha a BKK adott színt
+    if bg and text:
+        return format_hex_color(bg, "#009EE3"), format_hex_color(text, "#FFFFFF")
+
+    return "#009EE3", "#FFFFFF"
 
 
 def decode_polyline(polyline_str: str) -> list[tuple[float, float]]:
@@ -127,55 +140,111 @@ async def fetch_vehicles_for_location(
         return cached
 
     url = f"{settings.FUTAR_BASE_URL}/vehicles-for-location.json"
-    params = {
-        "key": key,
-        "lat": lat,
-        "lon": lon,
-        "latSpan": lat_span,
-        "lonSpan": lon_span,
-        "includeReferences": "routes,trips"
-    }
 
+    # A BKK OTP API limit: ha latSpan vagy lonSpan >= 0.095, az API üres választ (0 járművet) ad vissza!
+    # Ha a felhasználó kicsinyít a térképen (lat_span vagy lon_span > 0.08),
+    # 4 fedő szektort kérdezünk le párhuzamosan a teljes Budapest lefedéséhez.
+    if lat_span > 0.08 or lon_span > 0.08:
+        query_coords = [
+            (47.54, 19.01, 0.085, 0.085),  # Észak-Buda / Óbuda
+            (47.54, 19.13, 0.085, 0.085),  # Észak-Pest / Újpest / Zugló
+            (47.45, 19.02, 0.085, 0.085),  # Dél-Buda / Kelenföld
+            (47.45, 19.14, 0.085, 0.085),  # Dél-Pest / Kőbánya / Kispest
+        ]
+    else:
+        query_coords = [
+            (lat, lon, min(lat_span, 0.088), min(lon_span, 0.088))
+        ]
+
+    all_raw = []
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(url, params=params)
-        resp.raise_for_status()
-        raw = resp.json()
+        tasks = [
+            client.get(url, params={
+                "key": key,
+                "lat": q_lat,
+                "lon": q_lon,
+                "latSpan": q_lat_span,
+                "lonSpan": q_lon_span,
+                "includeReferences": "routes,trips"
+            })
+            for q_lat, q_lon, q_lat_span, q_lon_span in query_coords
+        ]
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        # Ha 401-et kapunk egyéni kulcsra, azonnal próbáljuk újra a hivatalos 'bkk-web' kulccsal:
+        if any(isinstance(resp, httpx.Response) and resp.status_code == 401 for resp in responses) and key != "bkk-web":
+            tasks = [
+                client.get(url, params={
+                    "key": "bkk-web",
+                    "lat": q_lat,
+                    "lon": q_lon,
+                    "latSpan": q_lat_span,
+                    "lonSpan": q_lon_span,
+                    "includeReferences": "routes,trips"
+                })
+                for q_lat, q_lon, q_lat_span, q_lon_span in query_coords
+            ]
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-    data = raw.get("data", {})
-    list_items = data.get("list", [])
-    refs = data.get("references", {})
-    routes_map = normalize_references(refs.get("routes"))
-    trips_map = normalize_references(refs.get("trips"))
+        for resp in responses:
+            if isinstance(resp, httpx.Response) and resp.status_code == 200:
+                all_raw.append(resp.json())
 
+    seen_vehicle_ids = set()
     vehicles = []
-    for v in list_items:
-        loc = v.get("location")
-        if not loc:
-            continue
-        trip = trips_map.get(v.get("tripId"), {})
-        route_id = v.get("routeId") or trip.get("routeId")
-        route = routes_map.get(route_id, {})
 
-        short_name = route.get("shortName") or v.get("label") or (route_id or "").replace("BKK_", "")
-        bg_color, text_color = get_route_colors(route)
-        route_type = route.get("type") or v.get("routeType") or "BUS"
+    for raw in all_raw:
+        data = raw.get("data", {})
+        list_items = data.get("list", [])
+        refs = data.get("references", {})
+        routes_map = normalize_references(refs.get("routes"))
+        trips_map = normalize_references(refs.get("trips"))
 
-        vehicles.append({
-            "vehicleId": v.get("vehicleId"),
-            "licensePlate": v.get("licensePlate"),
-            "lat": loc.get("lat"),
-            "lon": loc.get("lon"),
-            "bearing": v.get("bearing"),
-            "speedKmh": round((v.get("speed") or 0) * 3.6),
-            "routeId": route_id,
-            "routeShortName": short_name,
-            "routeType": route_type,
-            "color": bg_color,
-            "textColor": text_color,
-            "headsign": trip.get("tripHeadsign") or v.get("label") or "",
-            "model": v.get("model", ""),
-            "status": v.get("status", "")
-        })
+        for v in list_items:
+            loc = v.get("location")
+            if not loc:
+                continue
+            v_id = v.get("vehicleId") or f"{loc.get('lat')}_{loc.get('lon')}"
+            if v_id in seen_vehicle_ids:
+                continue
+            seen_vehicle_ids.add(v_id)
+
+            trip = trips_map.get(v.get("tripId"), {})
+            route_id = v.get("routeId") or trip.get("routeId")
+            route = routes_map.get(route_id, {})
+
+            short_name = route.get("shortName") or v.get("label") or (route_id or "").replace("BKK_", "")
+            bg_color, text_color = get_route_colors(route)
+
+            raw_type = str(route.get("type") or v.get("routeType") or "").upper()
+            s_name_upper = str(short_name).upper()
+
+            if "SUBURBAN" in raw_type or "RAIL" in raw_type or s_name_upper.startswith("H"):
+                norm_type = "RAIL"
+            elif "TROLLEY" in raw_type:
+                norm_type = "TROLLEYBUS"
+            elif "SUBWAY" in raw_type or "METRO" in raw_type or s_name_upper.startswith("M"):
+                norm_type = "SUBWAY"
+            elif "TRAM" in raw_type:
+                norm_type = "TRAM"
+            else:
+                norm_type = "BUS"
+
+            vehicles.append({
+                "vehicleId": v_id,
+                "licensePlate": v.get("licensePlate"),
+                "lat": loc.get("lat"),
+                "lon": loc.get("lon"),
+                "bearing": v.get("bearing"),
+                "speedKmh": round((v.get("speed") or 0) * 3.6),
+                "routeId": route_id,
+                "routeShortName": short_name,
+                "routeType": norm_type,
+                "color": bg_color,
+                "textColor": text_color,
+                "headsign": trip.get("tripHeadsign") or v.get("label") or "",
+                "model": v.get("model", ""),
+                "status": v.get("status", "")
+            })
 
     result = {
         "count": len(vehicles),
@@ -326,34 +395,84 @@ async def fetch_departures_for_stop(
 
 
 COMMON_ROUTE_MAP = {
+    # Metrók
     "M1": "BKK_5100",
     "M2": "BKK_5200",
     "M3": "BKK_5300",
     "M4": "BKK_5400",
+    # Villamosok
     "1": "BKK_3010",
     "2": "BKK_3020",
+    "3": "BKK_3030",
     "4": "BKK_3040",
     "6": "BKK_3060",
+    "17": "BKK_3170",
+    "19": "BKK_3190",
     "47": "BKK_3470",
     "49": "BKK_3490",
+    "56": "BKK_3560",
+    # HÉV vonalak
+    "H5": "BKK_H5",
+    "H6": "BKK_H6",
+    "H7": "BKK_H7",
+    "H8": "BKK_H8",
+    "H9": "BKK_H9",
+    # Trolibuszok
+    "72": "BKK_4720",
+    "73": "BKK_4730",
+    "74": "BKK_4740",
+    "75": "BKK_4750",
+    "76": "BKK_4760",
+    "77": "BKK_4770",
+    "78": "BKK_4780",
+    "79": "BKK_4790",
+    "80": "BKK_4800",
+    "81": "BKK_4810",
+    "82": "BKK_4820",
+    "83": "BKK_4830",
+    # Főbb autóbuszok
+    "7": "BKK_0070",
+    "8E": "BKK_0085",
+    "9": "BKK_0090",
+    "100E": "BKK_1005",
+    "200E": "BKK_2005",
+    "105": "BKK_1050",
+    "133E": "BKK_1335",
 }
 
 CORE_NETWORK_ROUTES = [
+    # Metrók (SUBWAY)
     ("BKK_5100", "M1"),
     ("BKK_5200", "M2"),
     ("BKK_5300", "M3"),
     ("BKK_5400", "M4"),
+    # Villamosok (TRAM)
     ("BKK_3040", "4"),
     ("BKK_3060", "6"),
     ("BKK_3010", "1"),
     ("BKK_3020", "2"),
     ("BKK_3470", "47"),
     ("BKK_3490", "49"),
+    # HÉV (RAIL)
+    ("BKK_H5", "H5"),
+    ("BKK_H6", "H6"),
+    ("BKK_H7", "H7"),
+    ("BKK_H8", "H8"),
+    # Trolibusz (TROLLEYBUS)
+    ("BKK_4720", "72"),
+    ("BKK_4740", "74"),
+    ("BKK_4760", "76"),
+    ("BKK_4800", "80"),
+    # Főbuszok (BUS)
+    ("BKK_0070", "7"),
+    ("BKK_0090", "9"),
+    ("BKK_1050", "105"),
+    ("BKK_1005", "100E"),
 ]
 
 
 async def fetch_route_details(route_id: str, api_key: Optional[str] = None) -> Dict[str, Any]:
-    """Lekéri egy BKK járat (pl. M3, 4-es villamos) nyomvonalának koordinátáit és adatait."""
+    """Lekéri egy BKK járat (pl. M3, 4, 72, H5) nyomvonalának koordinátáit és adatait."""
     key = resolve_api_key(api_key)
     clean_id = route_id.strip()
     target_id = COMMON_ROUTE_MAP.get(clean_id.upper(), clean_id)
@@ -379,7 +498,20 @@ async def fetch_route_details(route_id: str, api_key: Optional[str] = None) -> D
 
     entry = raw.get("data", {}).get("entry", {})
     short_name = entry.get("shortName") or clean_id
-    route_type = entry.get("type", "BUS")
+    raw_type = str(entry.get("type", "BUS")).upper()
+    s_upper = str(short_name).upper()
+
+    if "SUBURBAN" in raw_type or "RAIL" in raw_type or s_upper.startswith("H"):
+        norm_type = "RAIL"
+    elif "TROLLEY" in raw_type:
+        norm_type = "TROLLEYBUS"
+    elif "SUBWAY" in raw_type or "METRO" in raw_type or s_upper.startswith("M"):
+        norm_type = "SUBWAY"
+    elif "TRAM" in raw_type:
+        norm_type = "TRAM"
+    else:
+        norm_type = "BUS"
+
     bg_color, text_color = get_route_colors(entry)
 
     variants = entry.get("variants", [])
@@ -400,7 +532,7 @@ async def fetch_route_details(route_id: str, api_key: Optional[str] = None) -> D
         "routeId": target_id,
         "shortName": short_name,
         "description": entry.get("description", ""),
-        "type": route_type,
+        "type": norm_type,
         "color": bg_color,
         "textColor": text_color,
         "polylines": polylines
