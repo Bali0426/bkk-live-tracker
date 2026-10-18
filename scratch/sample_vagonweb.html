@@ -1,0 +1,692 @@
+﻿     <!DOCTYPE html>
+<html lang="cs"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta http-equiv="content-language" content="cs">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<title>vagonWEB » Historické řazení vlaků » 2025 » START »</title><link rel="stylesheet" href="https://www.vagonweb.cz/normal.css?t=67" type="text/css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="text/javascript" src="https://www.vagonweb.cz/jquery-3.3.1.min.js"></script>
+</head>
+<body> 
+
+<div id='obalovydiv'><div class='respon_none'><a class='td_none' style='text-decoration:none;' href=https://www.vagonweb.cz/><div id="hlavicka"><div id='vw1' style='text-decoration:none;'>vagonWEB </div><div id='vw2'>Železniční osobní vozy </div>
+<div class="obsah"> 
+&nbsp;
+</div> 
+</div>
+</a>
+</div>
+
+<div id="hlavicka_respon"><a href=https://www.vagonweb.cz/><span class=nadpisvw1>vagonWEB </span><br /><span class=nadpisvw2>Železniční osobní vozy </span></a></div>
+
+<div id="horizmenu_respon">
+<ul><li><div id=prvni><img class='bord0' src='https://www.vagonweb.cz/_img/hlavni_menu.gif'>&nbsp;Menu</div>
+ <ul>
+  <li><a href='https://www.vagonweb.cz/oznacovani'>Označování</a></li>
+  <li><a href='https://www.vagonweb.cz/popisy'>Popisy</a></li>
+  <li><a href='https://www.vagonweb.cz/recenze'>Recenze</a></li>      
+  <li><a href='https://www.vagonweb.cz/seznamy'>Seznamy</a></li>
+  <li><a href='https://www.vagonweb.cz/razeni'>Řazení</a></li>
+  <li><a href='https://www.vagonweb.cz/fotogalerie'>Fotogalerie</a></li>
+  <li><a href='https://www.vagonweb.cz/clanky'>Články</a></li>
+  <li><a href='https://www.vagonweb.cz/ostatni'>Ostatní</a></li>
+
+  <li><div id=prvni class=jazyky>&#127757; &nbsp; cs &nbsp; &#9660;</div></li>
+  <li><a class=jazyky href="?zeme=START&cislo=149&rok=2025&lang=cs">Česky</a></li>
+  <li><a class=jazyky href="?zeme=START&cislo=149&rok=2025&lang=en">English</a></li>
+  <li><a class=jazyky href="?zeme=START&cislo=149&rok=2025&lang=de">Deutsch</a></li>
+  <li><a class=jazyky href="?zeme=START&cislo=149&rok=2025&lang=pl">Polski</a></li>
+  <li><a class=jazyky href="?zeme=START&cislo=149&rok=2025&lang=hu">Magyar</a></li>
+ </ul> 
+</li></ul>
+
+
+</div>
+<link rel="stylesheet" href="https://www.vagonweb.cz/auth.css?v=2" type="text/css">
+<div id="auth-overlay-login" class="auth-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="auth-nadpis-login">
+  <div class="auth-modal-box">
+    <button class="auth-modal-zavrit" aria-label="Zavřít">&times;</button>
+    <h3 id="auth-nadpis-login">Přihlášení</h3>
+    <form id="auth-form-login" autocomplete="on" novalidate>
+      <input type="hidden" name="csrf_token" value="eb96c626862841b43cde0aed4d6eca5c0d6f4ec0db93742c96ebe647f5af698d">
+      <div class="auth-field">
+        <label for="auth-login-jmeno">Přihlašovací jméno</label>
+        <input type="text" id="auth-login-jmeno" name="login" autocomplete="username" maxlength="100" required>
+      </div>
+      <div class="auth-field">
+        <label for="auth-login-heslo">Heslo</label>
+        <input type="password" id="auth-login-heslo" name="heslo" autocomplete="current-password" maxlength="200" required>
+      </div>
+      <div class="auth-msg auth-msg-chyba" id="auth-login-chyba" style="display:none;" role="alert"></div>
+      <button type="submit" class="auth-btn auth-btn-primary auth-btn-submit">Přihlásit</button>      <p class="auth-zapomenute-heslo"><a href="#" id="auth-show-reset">Zapomněli jste heslo?</a></p>
+    </form>
+  </div>
+</div>
+<div id="auth-overlay-reset" class="auth-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="auth-nadpis-reset">
+  <div class="auth-modal-box">
+    <button class="auth-modal-zavrit" aria-label="Zavřít">&times;</button>
+    <h3 id="auth-nadpis-reset">Zapomenuté heslo</h3>
+    <p class="auth-reset-popis">Zadejte kontaktní e-mail, který jste použili při registraci. Zašleme Vám odkaz pro obnovení hesla.</p>
+    <form id="auth-form-reset" novalidate>
+      <input type="hidden" name="csrf_token" value="eb96c626862841b43cde0aed4d6eca5c0d6f4ec0db93742c96ebe647f5af698d">
+      <div class="auth-field">
+        <label for="auth-reset-email">Kontaktní e-mail</label>
+        <input type="email" id="auth-reset-email" name="email" autocomplete="email" maxlength="255" required>
+      </div>
+      <div class="auth-msg auth-msg-chyba"  id="auth-reset-chyba"  style="display:none;" role="alert"></div>
+      <div class="auth-msg auth-msg-uspech" id="auth-reset-uspech" style="display:none;" role="status"></div>
+      <button type="submit" class="auth-btn auth-btn-primary auth-btn-submit">Odeslat odkaz</button>
+      <p class="auth-zapomenute-heslo" style="margin-top:12px;"><a href="#" id="auth-reset-zpet">← Zpět na přihlášení</a></p>    </form>
+  </div>
+</div>
+<div id="auth-overlay-reg" class="auth-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="auth-nadpis-reg">
+  <div class="auth-modal-box">
+    <button class="auth-modal-zavrit" aria-label="Zavřít">&times;</button>
+    <h3 id="auth-nadpis-reg">Registrace</h3>
+    <p class="auth-reset-popis">Typ registrace: <strong>Standardní registrace</strong></p>
+    <form id="auth-form-reg" autocomplete="on" novalidate>
+      <input type="hidden" name="csrf_token" value="eb96c626862841b43cde0aed4d6eca5c0d6f4ec0db93742c96ebe647f5af698d">
+      <input type="hidden" name="reg_token" value="">
+      <div class="auth-field">
+        <label for="auth-reg-login">Přihlašovací jméno <span class="auth-req">*</span></label>
+        <input type="text" id="auth-reg-login" name="login" autocomplete="username" maxlength="30" required>
+        <span class="auth-tip">Přihlašovacím jménem se budete přihlašovat do administrace, doporučujeme nepoužívat diakritiku.</span>
+      </div>
+      <div class="auth-field">
+        <label for="auth-reg-jmeno">Uživatelské jméno <span class="auth-req">*</span></label>
+        <input type="text" id="auth-reg-jmeno" name="jmeno" maxlength="100" required>
+        <span class="auth-tip">V tomto tvaru bude Vaše jméno uvedeno na webu. Může být stejné jako přihlašovací jméno.</span>
+      </div>
+      <div class="auth-field">
+        <label for="auth-reg-heslo">Heslo <span class="auth-req">*</span></label>
+        <input type="password" id="auth-reg-heslo" name="heslo" autocomplete="new-password" maxlength="200" required>
+        <span class="auth-tip">Heslo musí mít alespoň 6 znaků.</span>
+      </div>
+      <div class="auth-field">
+        <label for="auth-reg-heslo2">Heslo znovu <span class="auth-req">*</span></label>
+        <input type="password" id="auth-reg-heslo2" name="heslo2" autocomplete="new-password" maxlength="200" required>
+      </div>
+      <div class="auth-field">
+        <label for="auth-reg-mail-k">Kontaktní e-mail <span class="auth-req">*</span></label>
+        <input type="email" id="auth-reg-mail-k" name="mail_kontaktni" autocomplete="email" maxlength="255" required>
+        <span class="auth-tip">Váš e-mail, na kterém Vás zastihneme. Tento e-mail nebude zveřejněn, použijeme jej pouze pro komunikaci s Vámi.</span>
+      </div>
+      <div class="auth-field">
+        <label for="auth-reg-mail">Veřejný e-mail</label>
+        <input type="email" id="auth-reg-mail" name="mail" maxlength="255">
+        <span class="auth-tip">Tento e-mail bude uveden ve tvaru něco(zavináč)něco(tečka)cz vedle Vašeho uživatelského jména. Pokud nechcete e-mail uvádět, toto pole nevyplňujte.</span>
+      </div>
+      <div class="auth-msg auth-msg-chyba"  id="auth-reg-chyba"  style="display:none;" role="alert"></div>
+      <div class="auth-msg auth-msg-uspech" id="auth-reg-uspech" style="display:none;" role="status"></div>
+      <button type="submit" class="auth-btn auth-btn-primary auth-btn-submit">Zaregistrovat</button>
+      <p class="auth-req-info"><span class="auth-req">*</span> = Povinné</p>
+    </form>
+  </div>
+</div>
+<script>
+(function ($) {
+  "use strict";
+  var ajaxUrl  = "https:\/\/www.vagonweb.cz\/auth_ajax.php";
+  var csrfToken = "eb96c626862841b43cde0aed4d6eca5c0d6f4ec0db93742c96ebe647f5af698d";
+
+  function zobrazOverlay(id) {
+    $(".auth-overlay").hide();
+    $(id).fadeIn(150);
+    $(id).find("input[type=text],input[type=email]").first().trigger("focus");
+  }
+  function skrytOverlay() {
+    $(".auth-overlay").fadeOut(150);
+  }
+
+  $(document).on("click", "#auth-show-login", function (e) {
+    e.preventDefault(); zobrazOverlay("#auth-overlay-login");
+  });
+  $(document).on("click", "#auth-show-reg", function (e) {
+    e.preventDefault(); zobrazOverlay("#auth-overlay-reg");
+  });
+  $(document).on("click", "#auth-show-reset", function (e) {
+    e.preventDefault(); zobrazOverlay("#auth-overlay-reset");
+  });
+  $(document).on("click", "#auth-reset-zpet", function (e) {
+    e.preventDefault(); zobrazOverlay("#auth-overlay-login");
+  });
+  $(document).on("click", ".auth-modal-zavrit", skrytOverlay);
+  $(document).on("click", ".auth-overlay", function (e) {
+    if ($(e.target).hasClass("auth-overlay")) skrytOverlay();
+  });
+  $(document).on("keydown", function (e) {
+    if (e.key === "Escape") skrytOverlay();
+  });
+
+  // Přihlášení
+  $(document).on("submit", "#auth-form-login", function (e) {
+    e.preventDefault();
+    var $f   = $(this);
+    var $err = $("#auth-login-chyba");
+    var $btn = $f.find(".auth-btn-submit");
+    $err.hide();
+    $btn.prop("disabled", true).text("P\u0159ihla\u0161uji\u2026");
+    $.ajax({
+      url: ajaxUrl, method: "POST",
+      data: { action: "prihlasit", csrf_token: csrfToken,
+              login: $f.find("[name=login]").val(),
+              heslo: $f.find("[name=heslo]").val() },
+      dataType: "json",
+      success: function (d) {
+        if (d.ok) { skrytOverlay(); window.location.reload(); }
+        else { $err.text(d.chyba).show(); $btn.prop("disabled", false).text("P\u0159ihl\u00e1sit"); }
+      },
+      error: function () {
+        $err.text("Chyba serveru. Zkuste to znovu.").show();
+        $btn.prop("disabled", false).text("P\u0159ihl\u00e1sit");
+      }
+    });
+  });
+
+  // Odhlášení
+  $(document).on("click", "#auth-btn-odhlasit", function () {
+    var $btn = $(this);
+    $btn.prop("disabled", true).text("Odhla\u0161uji\u2026");
+    $.ajax({
+      url: ajaxUrl, method: "POST",
+      data: { action: "odhlasit", csrf_token: csrfToken },
+      dataType: "json",
+      complete: function () { window.location.reload(); }
+    });
+  });
+
+  // Registrace
+  $(document).on("submit", "#auth-form-reg", function (e) {
+    e.preventDefault();
+    var $f      = $(this);
+    var $err    = $("#auth-reg-chyba");
+    var $ok     = $("#auth-reg-uspech");
+    var $btn    = $f.find(".auth-btn-submit");
+    $err.hide(); $ok.hide();
+
+    var heslo  = $f.find("[name=heslo]").val();
+    var heslo2 = $f.find("[name=heslo2]").val();
+    if (heslo !== heslo2) { $err.text("Hesla se neshoduj\u00ed.").show(); return; }
+
+    $btn.prop("disabled", true).text("Registruji\u2026");
+    $.ajax({
+      url: ajaxUrl, method: "POST",
+      data: { action: "registrovat", csrf_token: $f.find("[name=csrf_token]").val(),
+              login: $f.find("[name=login]").val(),
+              jmeno: $f.find("[name=jmeno]").val(),
+              heslo: heslo,
+              mail_kontaktni: $f.find("[name=mail_kontaktni]").val(),
+              mail:  $f.find("[name=mail]").val(),
+              reg_token: $f.find("[name=reg_token]").val() },
+      dataType: "json",
+      success: function (d) {
+        if (d.ok) {
+          $ok.text(d.zprava).show();
+          $f[0].reset();
+          $btn.prop("disabled", false).text("Zaregistrovat");
+          setTimeout(function () { zobrazOverlay("#auth-overlay-login"); }, 2000);
+        } else {
+          $err.text(d.chyba).show();
+          $btn.prop("disabled", false).text("Zaregistrovat");
+        }
+      },
+      error: function () {
+        $err.text("Chyba serveru. Zkuste to znovu.").show();
+        $btn.prop("disabled", false).text("Zaregistrovat");
+      }
+    });
+  });
+
+  // Žádost o obnovení hesla
+  $(document).on("submit", "#auth-form-reset", function (e) {
+    e.preventDefault();
+    var $f   = $(this);
+    var $err = $("#auth-reset-chyba");
+    var $ok  = $("#auth-reset-uspech");
+    var $btn = $f.find(".auth-btn-submit");
+
+    if ($f.data("resetSent") === true) {
+      return;
+    }
+
+    $err.hide(); $ok.hide();
+    $btn.prop("disabled", true).text("Odes\u00edl\u00e1m\u2026");
+    $.ajax({
+      url: ajaxUrl, method: "POST",
+      data: { action: "reset_pozadavek", csrf_token: csrfToken,
+              email: $f.find("[name=email]").val() },
+      dataType: "json",
+      success: function (d) {
+        if (d.ok) {
+          $f.data("resetSent", true);
+          $ok.text(d.zprava || "Pokud je e-mail registrov\u00e1n, obdr\u017e\u00edte odkaz pro obnoven\u00ed hesla do n\u011bkolika minut.").show();
+          $btn.hide();
+          $f.find("[name=email]").prop("readonly", true);
+        }
+        else { $err.text(d.chyba).show(); }
+        if (!d.ok) {
+          $btn.prop("disabled", false).text("Odeslat odkaz");
+        }
+      },
+      error: function () {
+        $err.text("Chyba serveru. Zkuste to znovu.").show();
+        $btn.prop("disabled", false).text("Odeslat odkaz");
+      }
+    });
+  });
+}(jQuery));
+</script>
+
+<script src="https://www.vagonweb.cz/jquery-ui-1.12.1.min.custom.js" type='text/javascript'></script>
+<script type="text/javascript" src="https://www.vagonweb.cz/fotogalerie/_colorbox/jquery.colorbox-min.js"></script>
+<script type="text/javascript" src="https://www.vagonweb.cz/fotogalerie/_colorbox/jquery.colorbox-cs.js"></script>
+<link rel="stylesheet" href="../jquery-ui-1.9.2.custom.css" type="text/css" media="all" />
+<link rel="stylesheet" href="https://www.vagonweb.cz/fotogalerie/_colorbox/colorbox.css" />
+
+
+
+<div id="horizmenu">
+<ul>
+<li><a href="https://www.vagonweb.cz/oznacovani/"><span>Označování</span></a></li>
+<li><a href="https://www.vagonweb.cz/popisy/"><span>Popisy</span></a></li>
+<li><a href="https://www.vagonweb.cz/recenze/"><span>Recenze</span></a></li>
+<li><a href="https://www.vagonweb.cz/seznamy/"><span>Seznamy</span></a></li>
+<li><a id="horizmenuakt" href="https://www.vagonweb.cz/razeni/"><span>Řazení</span></a></li>
+<li><a href="https://www.vagonweb.cz/fotogalerie/"><span>Fotogalerie</span></a></li>
+<li><a href="https://www.vagonweb.cz/clanky/"><span>Články</span></a></li>
+<li><a href="https://www.vagonweb.cz/ostatni/"><span>Ostatní</span></a></li>
+</ul>
+<div id=cesta3><a href=https://www.vagonweb.cz/>Hlavní strana</a>  &raquo; <a href=https://www.vagonweb.cz/razeni/>Historické řazení vlaků</a> &raquo; <a href=https://www.vagonweb.cz/razeni/?rok=2025>2025</a> &raquo; <a href='https://www.vagonweb.cz/razeni/razeni.php?zeme=START&kategorie=&rok=2025'>START </a> &raquo; <b>  <i></i></b></div>
+</div>
+<div id=cesta4> &raquo; <a href=https://www.vagonweb.cz/razeni/>Historické řazení vlaků</a> &raquo; <a href=https://www.vagonweb.cz/razeni/?rok=2025>2025</a> &raquo; <a href='https://www.vagonweb.cz/razeni/razeni.php?zeme=START&kategorie=&rok=2025'>START </a> &raquo; <b>  <i></i></b></div>
+
+<div id='jazyky' class='odkaz'><b>cs</b> &nbsp; &nbsp; &nbsp; &nbsp; &#9660;</div>
+<div id='vlajky'>
+<a href="?zeme=START&cislo=149&rok=2025&lang=cs">Česky</a><br />
+<a href="?zeme=START&cislo=149&rok=2025&lang=en">English</a><br />
+<a href="?zeme=START&cislo=149&rok=2025&lang=de">Deutsch</a><br />
+<a href="?zeme=START&cislo=149&rok=2025&lang=pl">Polski</a><br />
+<a href="?zeme=START&cislo=149&rok=2025&lang=hu">Magyar</a><br />
+<a href="?zeme=START&cislo=149&rok=2025&lang=es">Español</a><br />
+</div>
+
+<div id="pravanavigace0"> 
+<div class="obsah">
+
+</div>
+</div>
+
+<div id="stred0">
+<div class="obsah">
+
+
+
+<table width=100%><tr><td><h1>Historické řazení vlaků 2025</h1></td><td class='print_none' style='width:170px; text-align:right;' valign=top>
+
+<form name='vw_razeni2025' method='get' action='razeni.php'>
+<input name='rok' type='hidden' value='2025'>
+<input id='jmeno' name='jmeno' type='text' value='' title='Číslo nebo jméno vlaku'><input name='najit' type='submit' value='&#128269;'>
+</form>
+
+</td></tr>
+<tr><td colspan=2><h2 style='margin:-0.4em 0 0.8em 0;'>(15.12.2024 - 13.12.2025)</h2><h2> </h2></td></tr>
+</table>
+
+
+
+<br /><h4>Tento vlak nebyl nalezen</h4><br /><p><a href=razeni.php?zeme=START&rok=2025>START 2025</a></p><p><a href=index.php?rok=2025>Hlavní strana 2025</a></p><br><br><h2>&raquo; <a href=../razeni/vlak.php?zeme=START&cislo=149&rok=2025>zobrazit</a></h2>
+  <br><br><br><br><br><br><br><br><br><br><br><br><br /><br /><br /><br />
+<script type="text/javascript" language="JavaScript">
+jQuery.ready();
+
+
+var scifi='scifi';    //obezlička
+var scifi2='scifi2';    //obezlička
+var rok_gvd=2025;
+
+
+$('#jmeno').autocomplete({
+            minLength: 2,
+            delay: 600,
+            source: function(request, response) {
+               $.getJSON("json_vlaky.php", { jmeno: request.term, rok:rok_gvd }, response);
+            },
+            focus: function( event, ui ) {
+                $("#jmeno").val( ui.item.cislo );
+                return false;
+            },
+            select: function( event, ui ) {
+                $("#jmeno").val( ui.item.cislo );
+                window.location.href="vlak.php?zeme=" + ui.item.zeme + "&kategorie=" + ui.item.druh + "&cislo=" + ui.item.cislo + "&rok=" + rok_gvd; 
+                return false;
+            },
+            position: { my : "right top", at: "right bottom" }
+              
+  }) 
+		.autocomplete("instance")._renderItem = function (ul, item) {
+			return $( "<li>" )
+				.data( "item.autocomplete", item )
+				.append( "<a>" + item.value + "<br><small>" + item.trasa + "</small></a>" )
+				.appendTo( ul );
+     };
+
+
+
+ $('h3#kalendar_plan').click(function(e){
+  $.post('ajax_kalendar_planovany.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:'', virtualni_vlak:'', cislo_alias:''}, 
+        function (vystup) {
+           $('div#kalendar_planovany').html(vystup).slideToggle('slow'); 
+        },
+        'html');
+ });
+
+
+ $('h3#kalendar_skut').click(function(e){
+  $.post('ajax_kalendar_skutecny.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:''}, 
+          function (vystup) {
+           $('div#kalendar_skutecny').html(vystup).slideToggle('slow'); 
+        },
+        'html');
+ });
+
+
+ $(document).on('click','td.aktiv',(function(e) {
+  var datum = $(this).attr('datum');
+  
+  $.post('ajax_dalsi_razeni_vlak.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:'', datum:datum}, 
+        function (vystup) {
+           $('div#skutecne_razeni').html(vystup).slideDown('slow'); 
+        },
+        'html');
+ }));
+
+
+ $(document).on('click','.kalendar_p td',(function(e) {
+  var od = $(this).attr('od');
+  var do_x = $(this).attr('do');
+  
+  $.post('ajax_dalsi_razeni_vlak.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:'', od:od, do_x:do_x, virtualni_vlak:'', cislo_alias:''}, 
+        function (vystup) {
+           $('div#planovane_razeni').html(vystup); 
+        },
+        'html');
+ }));
+
+
+ $(document).on('click','#kal_p_vse',(function(e) {
+  var od = $(this).attr('od');
+  var do_x = $(this).attr('do');
+  
+  $.post('ajax_dalsi_razeni_vlak.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:'', od:od, do_x:do_x, virtualni_vlak:'', cislo_alias:'', vsechny_planovane:1}, 
+        function (vystup) {
+           $('div#planovane_razeni').html(vystup).slideDown('slow'); 
+        },
+        'html');
+ }));
+
+
+ $(document).on('click','#kal_s_vse',(function(e) {
+  $.post('ajax_dalsi_razeni_vlak.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:'', datum:'vse'}, 
+        function (vystup) {
+           $('div#skutecne_razeni').html(vystup).slideDown('slow'); 
+        },
+        'html');
+ }));
+
+ $(document).on('click','#raz_skut_dalsi',(function(e) {
+  var start = $(this).attr('start');
+  var celkem = $(this).attr('celkem');
+  $('#raz_skut_dalsi').remove();
+  $.post('ajax_dalsi_razeni_vlak.php', {rok:'2025', zeme:'START', cislo:'149', nazev:'_n_', styl:'r', aktualni_rok:'2026', cislo_vozu:'', datum:'dalsi', start:start, celkem:celkem}, 
+        function (vystup) {
+           $('div#skutecne_razeni').append(vystup).slideDown('slow'); 
+        },
+        'html');
+ }));
+
+
+ $(document).on('click','a.nad',(function(e) {
+  var vlak_id = $(this).attr('vlak_id');
+  
+  $.post('ajax_dalsi_razeni_vlak.php', {rok:'2025', styl:'r', zobrazit_NAD:"ano", vlak_id:vlak_id}, 
+        function (vystup) {
+           $('div#vlak_'+vlak_id).html(vystup).slideDown('slow'); 
+        },
+        'html');
+ })); 
+
+
+
+$(document).on('click','a.chyby',(function(e) {
+  var id_zaznamu = $(this).attr('id_zaznamu');
+  var rok = $(this).attr('rok');
+  var kategorie = $(this).attr('kategorie');
+  var autor = $(this).attr('autor');
+  var info = $(this).attr('info');
+  var info_vlak = $(this).attr('info_vlak');
+  var kam = '#chyba_'+id_zaznamu;
+  $(kam).load('../chyba.php', {id_zaznamu:id_zaznamu, info:info, rok:rok, kategorie:kategorie, autor:autor, info_vlak:info_vlak}).toggle();
+}));
+
+/*
+var $loading = $('#loadingDiv').hide();
+$(document)
+  .ajaxStart(function () {
+    $loading.show();
+  })
+  .ajaxStop(function () {
+    $loading.hide();
+  });
+*/
+
+$(document).on('click','a.spatny_preklad',(function(e) {
+  var id_zaznamu = $(this).attr('id_zaznamu');
+  var rok = $(this).attr('rok');
+  var z_jazyku = $(this).attr('z_jazyku');
+  var do_jazyku = $(this).attr('do_jazyku');
+  var info = $(this).attr('info');
+  var info_vlak = $(this).attr('info_vlak');
+  var kam = '#chyba_'+id_zaznamu;
+  $(kam).load('ajax_spatny_preklad.php', {id_zaznamu:id_zaznamu, info:info, rok:rok, z_jazyku:z_jazyku, do_jazyku:do_jazyku, info_vlak:info_vlak}).toggle();
+}));
+
+$(document).on('click','a.spatny_preklad2',(function(e) {
+  e.preventDefault();
+  var id_zaznamu = $(this).attr('i');
+  var text = $(this).attr('text');
+  var j1 = $(this).attr('j1');
+  var j2 = $(this).attr('j2');
+  var k = $(this).attr('k');
+  var kam = $(this).attr('data-kam') || '#info_'+id_zaznamu;
+  $(kam).load('../preklad.php', {text:text, j1:j1, j2:j2, i:id_zaznamu, k:k});
+}));
+
+$(document).on('mouseover','.obraceci',(function(e) {
+  var obrazek = $(this).attr('src');
+  if (obrazek.slice(-6)=="-a.gif") {
+   var obrazek_b = obrazek.replace("-a.gif","-b.gif");
+  } else {
+   var obrazek_b = obrazek.replace("-b.gif","-a.gif");
+  }
+  $(this).attr('src', obrazek_b);
+}));
+
+$(document).on('mouseout','.obraceci',(function(e) {
+  var obrazek = $(this).attr('src');
+  if (obrazek.slice(-6)=="-a.gif") {
+   var obrazek_b = obrazek.replace("-a.gif","-b.gif");
+  } else {
+   var obrazek_b = obrazek.replace("-b.gif","-a.gif");
+  }
+  $(this).attr('src', obrazek_b);
+}));
+
+
+$(document).on('mouseover','.kalendar_p td',(function(e) {
+  var trida = $(this).attr('trida');
+  $('.'+trida).addClass('zhover');
+}));
+
+$(document).on('mouseout','.kalendar_p td',(function(e) {
+  var trida = $(this).attr('trida');
+//  $('.'+trida).css("filter","");  
+  $('.'+trida).removeClass('zhover');
+}));
+
+$(document).on('mouseenter','.cernobile',(function() {
+   $(this).removeClass("cernobile").addClass("bylo_cernobile");
+}));
+
+$(document).on('mouseleave','.bylo_cernobile',(function() {
+   $(this).removeClass("bylo_cernobile").addClass("cernobile");
+}));
+
+$(document).on('click','.skryt_pp_vozy',(function() {
+   $('.pp_vuz').hide(800);
+   $('.zobrazit_pp_vozy').show();
+   $('.skryt_pp_vozy').hide();
+})); 
+
+$(document).on('click','.zobrazit_pp_vozy',(function() {
+   $('.pp_vuz').show(800);
+   $('.zobrazit_pp_vozy').hide();
+   $('.skryt_pp_vozy').show();
+})); 
+
+$(document).on('click','.skryt_uzamcene_vozy',(function() {
+   $('.uzamceny_vuz').hide(800);
+   $('.zobrazit_uzamcene_vozy').show();
+   $('.skryt_uzamcene_vozy').hide();
+})); 
+
+$(document).on('click','.zobrazit_uzamcene_vozy',(function() {
+   $('.uzamceny_vuz').show(800);
+   $('.zobrazit_uzamcene_vozy').hide();
+   $('.skryt_uzamcene_vozy').show();
+}));
+
+
+
+$(document).on('click','.rez_cislo',(function() {
+   var rez = $(this).attr('rez');
+   var notsel = '.bunka_vozu:not(".' + rez + '")';
+   var notinfo = '.info_i:not(".' + rez + '")';
+       
+   if ($('.'+rez).hasClass('cernobile2')) {
+
+    $('.bunka_vozu').removeClass('cernobile2');
+    $('.info_i').removeClass('cernobile2');
+    
+    $(notsel).addClass('cernobile2');
+    $(notinfo).addClass('cernobile2');
+
+   } else {
+    
+    if ($(notsel).hasClass('cernobile2')) {
+     $('.bunka_vozu').removeClass('cernobile2');
+     $('.info_i').removeClass('cernobile2');
+    } else {
+     $(notsel).addClass('cernobile2');
+     $(notinfo).addClass('cernobile2');
+    }
+    
+   }
+}));
+
+
+$('a.colorbox').colorbox({opacity:0.5, scalePhotos:true, maxHeight:'95%', maxWidth:'95%', transition:'none', href:function () {
+ return $(this).attr('cb_href');
+},rel:function () {
+ return $(this).attr('rel');
+},title:function () {
+ var plna = 'Trvalý odkaz';
+ var url = $(this).attr('href');
+ return plna.link(url);
+}});
+$('a.colorbox').colorbox.resize();
+
+
+$(".sipka").click(function() {
+  var idv= $(this).attr('idv');
+  var sss = $("#vlacek"+idv).width()+100;
+
+  $("#vlacek"+idv).animate({left: "-"+sss+"px"}, {duration: sss*2, specialEasing: {width: "swing" },
+    complete: function() {
+      $( this ).css("left","105%");
+    }
+  });
+
+ $("#vlacek"+idv).animate( {"left": "-=105%"}, 4000, "swing" );
+});
+
+
+$(document).on('click','h3#h3_mista_vysvetlivky',(function(e) {
+  var d=$(this).attr('d');
+  var o=$(this).attr('o');
+  
+  $('div#mista_vysvetlivky').load('../popisy/mista/ajax_vysvetlivky.php?d='+d+'&o='+o).toggle('fast',(function(e) {
+   $('a.colorbox').colorbox.resize();
+   $('a.colorbox').colorbox({height:'100%'});
+  })); 
+}));
+
+</script>
+
+
+<small><span style='color:rgb(50,70,50);'>11.23</span></small>
+<div id="levanavigace2"> 
+<div class="obsah">
+<h4 class=obsah_sekce>Obsah sekce Řazení</h4>
+<ul class=margin0>
+<li><a href=index.php?rok=2026><b>2026</b></a></li><li><a href=index.php?rok=2025><b>2025</b></a></li><li><a href=index.php?rok=2024><b>2024</b></a></li><li><a href=index.php?rok=2023><b>2023</b></a></li><li><a href=index.php?rok=2022><b>2022</b></a></li><li><a href=index.php?rok=2021><b>2021</b></a></li><li><a href=index.php?rok=2020><b>2020</b></a></li><li><a href=index.php?rok=2019><b>2019</b></a></li><li><a href=index.php?rok=2018><b>2018</b></a></li><li><a href=index.php?rok=2017><b>2017</b></a></li><li><a href=index.php?rok=2016><b>2016</b></a></li><li><a href=index.php?rok=2015><b>2015</b></a></li><li><a href=index.php?rok=2014><b>2014</b></a></li><li><a href=index.php?rok=2013><b>2013</b></a></li><li><a href=index.php?rok=2012><b>2012</b></a></li><li><a href=index.php?rok=2011><b>2011</b></a></li><li><a href=index.php?rok=2010><b>2010</b></a></li><li><a href=index.php?rok=2009><b>2009</b></a></li><li><a href=index.php?rok=2008><b>2008</b></a></li><li><a href=index.php?rok=2007><b>2007</b></a></li><li><a href=index.php?rok=2006><b>2006</b></a></li><li><a href=index.php?rok=2005><b>2005</b></a></li><li><a href=index.php?rok=2004><b>2004</b></a></li><li><a href=index.php?rok=2003><b>2003</b></a></li><li><a href=index.php?rok=2002><b>2001/2002</b></a></li><li><a href=index.php?rok=2001><b>2000/2001</b></a></li><li><a href=index.php?rok=2000><b>1999/2000</b></a></li><li><a href=index.php?rok=1999><b>1998/1999</b></a></li><li><a href=index.php?rok=1998><b>1997/1998</b></a></li><li><a href=index.php?rok=1997><b>1996/1997</b></a></li><li><a href=index.php?rok=1996><b>1995/1996</b></a></li><li><a href=index.php?rok=1995><b>1994/1995</b></a></li><li><a href=index.php?rok=1994><b>1993/1994</b></a></li><li><a href=index.php?rok=1993><b>1992/1993</b></a></li><li><a href=index.php?rok=1992><b>1991/1992</b></a></li><li><a href=index.php?rok=1991><b>1990/1991</b></a></li><li><a href=index.php?rok=1990><b>1989/1990</b></a></li><li><a href=index.php?rok=1989><b>1988/1989</b></a></li><li><a href=index.php?rok=1988><b>1987/1988</b></a></li><li><a href=index.php?rok=1987><b>1986/1987</b></a></li><li><a href=index.php?rok=1986><b>1985/1986</b></a></li><li><a href=index.php?rok=1985><b>1984/1985</b></a></li><li><a href=index.php?rok=1984><b>1983/1984</b></a></li><li><a href=index.php?rok=1983><b>1982/1983</b></a></li><li><a href=index.php?rok=1982><b>1981/1982</b></a></li><li><a href=index.php?rok=1981><b>1980/1981</b></a></li><li><a href=index.php?rok=1980><b>1979/1980</b></a></li><li><a href=index.php?rok=1979><b>1978/1979</b></a></li><li><a href=index.php?rok=1978><b>1977/1978</b></a></li><li><a href=index.php?rok=1977><b>1976/1977</b></a></li><li><a href=index.php?rok=1976><b>1975/1976</b></a></li><li><a href=index.php?rok=1975><b>1974/1975</b></a></li><li><a href=index.php?rok=1974><b>1973/1974</b></a></li><li><a href=index.php?rok=1973><b>1972/1973</b></a></li><li><a href=index.php?rok=1972><b>1971/1972</b></a></li><li><a href=index.php?rok=1971><b>1970/1971</b></a></li><li><a href=index.php?rok=1970><b>1969/1970</b></a></li><li><a href=index.php?rok=1969><b>1968/1969</b></a></li><li><a href=index.php?rok=1966><b>1965/1966</b></a></li><li><a href=index.php?rok=1962><b>1961/1962</b></a></li><li><a href=index.php?rok=1959><b>1958/1959</b></a></li><li><a href=index.php?rok=scifi><b>sci-fi</b></a></li><li><a href=index.php?rok=scifi2><b>sci-fi 2</b></a></li>
+</ul>
+</div>
+</div>
+
+<script type='text/javascript' language='JavaScript'>
+jQuery.ready();
+
+$(document).on('mouseenter','div#jazyky',(function(e) {
+  $('#vlajky').show();
+}));
+
+$(document).on('mouseleave','div#vlajky',(function(e) {
+  $('#vlajky').hide();
+}));
+
+$(document).on('click','div#jazyky',(function(e) {
+  $('#vlajky').toggle();
+}));
+</script>
+
+</div> 
+</div> 
+
+</div> 
+
+
+
+
+<div id="zapati"> 
+<div class="obsah">
+<span style='font-family:Coda; font-size:20px;'>vagonWEB.cz</span><br />
+Železniční osobní vozy 
+<br><br>
+<div id=""><a href="#" id="auth-show-login" class="auth-odkaz">Přihlásit</a><a href="#" id="auth-show-reg" class="auth-odkaz"></a></div>
+
+&nbsp;
+
+
+</div> 
+</div>
+
+</div><a style="border:0px;" href="https://www.toplist.cz/"><script language="JavaScript" type="text/javascript">
+<!--
+document.write ('<img  style="border:0px;" src="https://toplist.cz/dot.asp?id=292994&http='+escape(document.referrer)+'&wi='+escape(window.screen.width)+'&he='+escape(window.screen.height)+'&cd='+escape(window.screen.colorDepth)+'&t='+escape(document.title)+'" width="1" height="1" border=0 alt="TOPlist" />'); 
+//--></script><noscript><img  style="border:0px;" src="https://toplist.cz/dot.asp?id=292994" border="0"
+alt="TOPlist" width="1" height="1" /></noscript></a>
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ca57ad6aadf52b',t:'MTc5MjM1NTg2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"f4322d0a55af4f94b8f64698bafd4a87","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body> 
+</html>

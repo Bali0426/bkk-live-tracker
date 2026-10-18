@@ -944,11 +944,27 @@ async function loadMavTrainDetails(elviraId, trainNumber, encodedRelation = '', 
     }
 
     const listEl = document.getElementById('boardDeparturesList');
+    listEl.innerHTML = '';
+
+    const compContainer = document.createElement('div');
+    compContainer.id = 'mavCompositionContainer';
+    compContainer.className = 'mav-composition-container';
+    compContainer.innerHTML = '<div class="vagonweb-loading"><span class="pulse-dot"></span> 🚆 Vonatösszeállítás betöltése a vagonWEB-ről...</div>';
+    listEl.appendChild(compContainer);
+
     if (data.html) {
-      listEl.innerHTML = data.html;
+      const timetableDiv = document.createElement('div');
+      timetableDiv.innerHTML = data.html;
+      listEl.appendChild(timetableDiv);
     } else {
-      listEl.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;">Nincs elérhető menetrend adat ehhez a járathoz.</div>';
+      const emptyDiv = document.createElement('div');
+      emptyDiv.style.cssText = 'padding:16px;color:#94a3b8;font-size:13px;';
+      emptyDiv.textContent = 'Nincs elérhető menetrend adat ehhez a járathoz.';
+      listEl.appendChild(emptyDiv);
     }
+
+    // Vonatösszeállítás aszinkron lekérése a vagonWEB.cz-ről
+    loadMavTrainComposition(elviraId, activeMavTrain.trainNumber || trainNumber);
 
     if (data.polylines && data.polylines.length > 0) {
       drawMavTrainPolylines(data.polylines, headerLabel, !silent);
@@ -961,6 +977,123 @@ async function loadMavTrainDetails(elviraId, trainNumber, encodedRelation = '', 
   }
 }
 window.loadMavTrainDetails = loadMavTrainDetails;
+
+// 🚆 vagonWEB Képes Vonatösszeállítás Kezelő
+let currentVagonwebData = null;
+let currentVagonwebCompType = 'actual'; // 'actual' | 'planned'
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function loadMavTrainComposition(elviraId, trainNumber) {
+  const container = document.getElementById('mavCompositionContainer');
+  if (!container) return;
+
+  const queryNum = trainNumber || elviraId || '';
+  if (!queryNum) {
+    container.innerHTML = '';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/mav/trains/${encodeURIComponent(elviraId)}/composition?train_number=${encodeURIComponent(queryNum)}`);
+    if (!res.ok) throw new Error('Hiba a vagonWEB lekérésben');
+    const data = await res.json();
+
+    if (!data.success) {
+      const cleanNum = (String(queryNum).match(/\d+/) || [queryNum])[0];
+      container.innerHTML = `
+        <div class="vagonweb-empty">
+          <span>ℹ️ Nincs mentett vagonWEB összeállítás ehhez a vonathoz (#${cleanNum})</span>
+          <a href="https://www.vagonweb.cz/razeni/vlak.php?cislo=${encodeURIComponent(cleanNum)}" target="_blank" class="vagonweb-link">Keresés a vagonWEB-en ↗</a>
+        </div>
+      `;
+      return;
+    }
+
+    currentVagonwebData = data;
+    // Ha van aktuális/tényleges, azzal nyitunk, különben a tervezettel
+    currentVagonwebCompType = data.hasActual ? 'actual' : 'planned';
+    renderVagonwebCard();
+  } catch (err) {
+    console.warn('Vagonweb betöltési hiba:', err);
+    container.innerHTML = '';
+  }
+}
+
+function renderVagonwebCard() {
+  const container = document.getElementById('mavCompositionContainer');
+  if (!container || !currentVagonwebData) return;
+
+  const data = currentVagonwebData;
+  const isActual = currentVagonwebCompType === 'actual';
+  const comp = isActual ? data.latestActual : data.defaultPlanned;
+
+  if (!comp || !comp.cars || comp.cars.length === 0) {
+    container.innerHTML = `
+      <div class="vagonweb-empty">
+        <span>ℹ️ Ehhez az állapothoz nem található kocsirajz.</span>
+        <a href="${data.vagonwebUrl}" target="_blank" class="vagonweb-link">vagonWEB adatlap ↗</a>
+      </div>
+    `;
+    return;
+  }
+
+  const badgeClass = isActual ? 'badge-actual' : 'badge-planned';
+  const badgeText = isActual ? '🔴 Tényleges összeállítás' : '🟢 Tervezett menetrendi';
+
+  container.innerHTML = `
+    <div class="vagonweb-card">
+      <div class="vagonweb-header">
+        <div class="vagonweb-title">
+          <span class="vagonweb-logo">🚆 vagonWEB</span>
+          <span class="vagonweb-badge ${badgeClass}">${badgeText}</span>
+        </div>
+        <a href="${data.vagonwebUrl}" target="_blank" class="vagonweb-link" title="Eredeti adatlap megnyitása a vagonWEB.cz oldalon">Adatlap ↗</a>
+      </div>
+      <div class="vagonweb-date-row">
+        <span class="vagonweb-date">📅 ${escapeHtml(comp.displayHeader || comp.rawHeader)}</span>
+        <div class="vagonweb-toggle-btns">
+          ${data.hasActual ? `<button class="vagonweb-toggle-btn ${isActual ? 'active' : ''}" onclick="switchVagonwebType('actual')">Tényleges</button>` : ''}
+          ${data.hasPlanned ? `<button class="vagonweb-toggle-btn ${!isActual ? 'active' : ''}" onclick="switchVagonwebType('planned')">Tervezett</button>` : ''}
+        </div>
+      </div>
+      <div class="vagonweb-train-scroll">
+        <div class="vagonweb-train-row">
+          ${comp.cars.map(c => `
+            <div class="vagonweb-car ${c.isLoco ? 'is-loco' : ''}" title="${escapeHtml(c.operator)} ${escapeHtml(c.carType)} ${escapeHtml(c.carSub)}">
+              <div class="car-top">
+                ${c.carNumber ? `<span class="car-num">${escapeHtml(c.carNumber)}</span>` : `<span class="car-loco-label">MOZDONY</span>`}
+                ${c.carClass ? `<span class="car-class-badge">${escapeHtml(c.carClass)}.</span>` : ''}
+              </div>
+              <div class="car-img-wrap">
+                ${c.imgUrl ? `<img src="${c.imgUrl}" alt="${escapeHtml(c.carType)}" class="car-img" loading="lazy">` : `<div style="font-size:10px;color:#94a3b8;">${escapeHtml(c.carType)}</div>`}
+              </div>
+              <div class="car-bottom">
+                <span class="car-type">${escapeHtml(c.carType || (c.isLoco ? 'Mozdony' : 'Kocsi'))}</span>
+                ${c.carSub ? `<span class="car-sub">${escapeHtml(c.carSub)}</span>` : ''}
+                ${c.operator ? `<span class="car-op">${escapeHtml(c.operator)}</span>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function switchVagonwebType(type) {
+  currentVagonwebCompType = type;
+  renderVagonwebCard();
+}
+window.switchVagonwebType = switchVagonwebType;
 
 // MÁV nyomvonal kirajzolása
 async function loadAndDrawMavRoute(elviraId, encodedTrainName) {

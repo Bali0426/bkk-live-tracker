@@ -20,6 +20,7 @@ from app.services.mav_client import (
     fetch_mav_stations,
     fetch_mav_station_details
 )
+from app.services.vagonweb_client import fetch_vagonweb_composition
 
 app = FastAPI(
     title="BKK Live Tracker & DIY API",
@@ -182,6 +183,27 @@ async def get_mav_train_details(
         return await fetch_mav_train_details(elvira_id, train_number)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"MÁV menetrend hiba: {str(e)}")
+
+
+@app.get("/api/mav/trains/{elvira_id}/composition")
+async def get_mav_train_composition(
+    elvira_id: str,
+    train_number: Optional[str] = Query(None, description="Vonatszám (pl. 149 vagy 560)")
+):
+    """Lekéri a vonat képes összeállítását a vagonWEB.cz-ről (tervezett és tényleges adatokkal)."""
+    try:
+        return await fetch_vagonweb_composition(train_number or elvira_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"vagonWEB hiba: {str(e)}")
+
+
+@app.get("/api/mav/composition/{train_number}")
+async def get_train_composition_by_number(train_number: str):
+    """Lekéri egy adott vonatszám (pl. 560, 149, 165) képes vagonWEB összeállítását."""
+    try:
+        return await fetch_vagonweb_composition(train_number)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"vagonWEB hiba: {str(e)}")
 
 
 @app.get("/api/mav/network")
