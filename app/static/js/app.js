@@ -22,11 +22,9 @@ const vehicleLayer = L.layerGroup().addTo(map);
 const mavRailsLayer = L.layerGroup().addTo(map);
 const mavRouteLayer = L.layerGroup().addTo(map);
 const mavTrainLayer = L.layerGroup().addTo(map);
-const mavStationsLayer = L.layerGroup().addTo(map);
 
 let mavTrains = [];
 let mavStations = [];
-let showMavStations = true;
 let activeStationName = null;
 let showMavRails = false;
 let activeMavTrain = null;
@@ -90,6 +88,28 @@ function isRailwayStation(stop) {
          name.includes('hév-állomás') ||
          desc.includes('vasútállomás') ||
          desc.includes('pályaudvar');
+}
+
+function getCleanStationName(name) {
+  if (!name) return '';
+  const n = String(name).trim();
+  const low = n.toLowerCase();
+  if (low.includes('keleti')) return 'Budapest-Keleti';
+  if (low.includes('nyugati')) return 'Budapest-Nyugati';
+  if (low.includes('déli') || low.includes('deli')) return 'Budapest-Déli';
+  if (low.includes('kelenföld') || low.includes('kelenfold')) return 'Budapest-Kelenföld';
+  if (low.includes('kőbánya-kispest')) return 'Kőbánya-Kispest';
+  return n.replace(/\s*(M|H|vasútállomás|pályaudvar|pu\.|megállóhely)\b/gi, '').trim();
+}
+
+function handleStopClick(stop) {
+  if (!stop) return;
+  if (isRailwayStation(stop)) {
+    const clean = getCleanStationName(stop.name);
+    loadMavStationDetails(clean, false, stop.stopId);
+  } else {
+    loadStopDepartures(stop.stopId, stop.name);
+  }
 }
 
 function getHeaders() {
@@ -414,34 +434,21 @@ async function fetchStops() {
 
         hullPolygon.on('mouseover', () => hullPolygon.setStyle({ fillOpacity: 0.38, weight: 2.2, color: '#818cf8' }));
         hullPolygon.on('mouseout', () => hullPolygon.setStyle({ fillOpacity: 0.22, weight: 1.5, color: '#4f46e5' }));
-        hullPolygon.on('click', () => loadStopDepartures(groupTargetId));
+        hullPolygon.on('click', () => handleStopClick({ stopId: groupTargetId, name: g.name }));
 
         stopGroupLayer.addLayer(hullPolygon);
       }
     });
 
-    // 2. Egyedi megálló jelölők felrajzolása
+    // 2. Egyedi megálló jelölők felrajzolása (Egységes normál megállóként jelennek meg)
     stopsList.forEach(s => {
       const isParent = Boolean(s.isStopArea || s.locationType === 1);
-      const isTrainStation = isRailwayStation(s);
       
-      let markerHtml = '';
-      let iconSize = [13, 13];
-      let iconAnchor = [6.5, 6.5];
-      
-      if (isTrainStation) {
-        iconSize = [24, 24];
-        iconAnchor = [12, 12];
-        markerHtml = `<div class="stop-marker stop-marker-train-station" title="${s.name} (Vasútállomás)">🚉</div>`;
-      } else if (isParent) {
-        iconSize = [20, 20];
-        iconAnchor = [10, 10];
-        markerHtml = `<div class="stop-marker stop-marker-parent" title="${s.name} (Gyűjtőállomás)">🏢</div>`;
-      } else {
-        iconSize = [13, 13];
-        iconAnchor = [6.5, 6.5];
-        markerHtml = `<div class="stop-marker stop-marker-dir" title="${s.name} (Per-irány megálló)"></div>`;
-      }
+      const iconSize = isParent ? [20, 20] : [13, 13];
+      const iconAnchor = isParent ? [10, 10] : [6.5, 6.5];
+      const markerHtml = isParent
+        ? `<div class="stop-marker stop-marker-parent" title="${s.name} (Gyűjtőállomás)">🏢</div>`
+        : `<div class="stop-marker stop-marker-dir" title="${s.name}"></div>`;
 
       const icon = L.divIcon({
         className: '',
@@ -450,16 +457,11 @@ async function fetchStops() {
         iconAnchor: iconAnchor
       });
 
-      const marker = L.marker([s.lat, s.lon], { icon, zIndexOffset: isTrainStation ? 700 : (isParent ? 500 : 0) });
+      const marker = L.marker([s.lat, s.lon], { icon, zIndexOffset: isParent ? 500 : 0 });
       
-      let badgeHtml = '';
-      if (isTrainStation) {
-        badgeHtml = `<span class="stop-badge stop-badge-rail-station">🚉 Vasútállomás / Pályaudvar</span>`;
-      } else if (isParent) {
-        badgeHtml = `<span class="stop-badge stop-badge-parent">🏢 Gyűjtőmegálló</span>`;
-      } else {
-        badgeHtml = `<span class="stop-badge stop-badge-dir">🚏 Per-irány megálló${s.direction ? ` (${s.direction}°)` : ''}</span>`;
-      }
+      const badgeHtml = isParent
+        ? `<span class="stop-badge stop-badge-parent">🏢 Gyűjtőmegálló</span>`
+        : `<span class="stop-badge stop-badge-dir">🚏 Per-irány megálló${s.direction ? ` (${s.direction}°)` : ''}</span>`;
       
       const typeInfo = s.type ? `<span style="color:#94a3b8;font-size:11px;"> • ${s.type}</span>` : '';
 
@@ -472,23 +474,10 @@ async function fetchStops() {
         </div>
       `, {
         direction: 'top',
-        offset: isTrainStation ? [0, -12] : (isParent ? [0, -10] : [0, -7])
+        offset: isParent ? [0, -10] : [0, -7]
       });
 
-      if (isTrainStation) {
-        marker.bindPopup(`
-          <div style="font-size:13px;line-height:1.5;min-width:230px;">
-            <strong style="color:#f59e0b;font-size:14px;">🚉 ${s.name}</strong><br>
-            <span style="color:#94a3b8;font-size:11px;">Kiemelt vasútállomás</span>
-            <div style="display:flex;gap:6px;margin-top:10px;">
-              <button class="btn btn-secondary" style="flex:1;font-size:11px;padding:6px;" onclick="loadStopDepartures('${s.stopId}')">🚏 BKK Indulások</button>
-              <button class="btn btn-primary" style="flex:1;font-size:11px;padding:6px;" onclick="loadMavStationDetails('${s.name}')">🚆 MÁV Menetrend</button>
-            </div>
-          </div>
-        `);
-      } else {
-        marker.on('click', () => loadStopDepartures(s.stopId));
-      }
+      marker.on('click', () => handleStopClick(s));
       stopLayer.addLayer(marker);
     });
   } catch (e) {
@@ -496,10 +485,11 @@ async function fetchStops() {
   }
 }
 
-async function loadStopDepartures(stopId) {
+async function loadStopDepartures(stopId, stopName = '') {
   if (!stopId) return;
   activeStopId = stopId.trim();
-  document.getElementById('stopInput').value = activeStopId;
+  const stopInput = document.getElementById('stopInput');
+  if (stopInput) stopInput.value = activeStopId;
 
   try {
     const res = await fetch(`/api/departures/${encodeURIComponent(activeStopId)}?limit=10`, {
@@ -508,10 +498,32 @@ async function loadStopDepartures(stopId) {
     if (!res.ok) throw new Error('Megálló nem található');
     const data = await res.json();
 
-    document.getElementById('futarBoard').classList.remove('hidden');
-    document.getElementById('boardStopName').textContent = data.stopName;
+    document.getElementById('mavBoard').classList.add('hidden');
+    const board = document.getElementById('futarBoard');
+    board.classList.remove('hidden');
+
+    const displayName = data.stopName || stopName || activeStopId;
+    document.getElementById('boardStopName').textContent = displayName;
     document.getElementById('boardStopId').textContent = data.stopId;
     document.getElementById('boardApiUrl').textContent = `/api/departures/${data.stopId}`;
+
+    // Ha a megálló egyben vasútállomás is, biztosítunk gombot a MÁV menetrendhez
+    const isTrain = isRailwayStation({ name: displayName });
+    let mavSwitchBtn = document.getElementById('btnBoardSwitchToMav');
+    if (isTrain) {
+      if (!mavSwitchBtn) {
+        mavSwitchBtn = document.createElement('button');
+        mavSwitchBtn.id = 'btnBoardSwitchToMav';
+        mavSwitchBtn.className = 'btn btn-primary';
+        mavSwitchBtn.style.cssText = 'margin-top:8px;width:100%;font-size:12px;padding:6px;';
+        document.querySelector('.board-stop-id').insertAdjacentElement('afterend', mavSwitchBtn);
+      }
+      mavSwitchBtn.innerHTML = `🚆 MÁV Vonat Menetrend (${getCleanStationName(displayName)})`;
+      mavSwitchBtn.onclick = () => loadMavStationDetails(getCleanStationName(displayName), false, data.stopId);
+      mavSwitchBtn.style.display = 'block';
+    } else if (mavSwitchBtn) {
+      mavSwitchBtn.style.display = 'none';
+    }
 
     const listEl = document.getElementById('boardDeparturesList');
     listEl.innerHTML = '';
@@ -932,64 +944,56 @@ async function toggleMavRails() {
   }
 }
 
-// 🚉 Vasútállomások Kezelése
+// 🚉 Vasútállomások és Menetrend Kezelése
 async function fetchMavStations() {
   try {
     const res = await fetch('/api/mav/stations');
     if (!res.ok) return;
     const data = await res.json();
     mavStations = data.stations || [];
-    renderMavStations();
-    const statsEl = document.getElementById('stationTabStats');
-    if (statsEl) {
-      statsEl.textContent = `${mavStations.length} vasútállomás a térképen`;
-    }
   } catch (err) {
     console.error('fetchMavStations failed:', err);
   }
 }
 
-function renderMavStations() {
-  mavStationsLayer.clearLayers();
-  if (!showMavStations) return;
+async function searchStationOrStop(query) {
+  if (!query || !query.trim()) return;
+  const q = query.trim();
+  const qLow = q.toLowerCase();
 
-  mavStations.forEach(s => {
-    try {
-      if (!s.lat || !s.lon) return;
-
-      const icon = L.divIcon({
-        className: 'station-div-icon',
-        html: `
-          <div class="station-map-marker ${s.isMajor ? 'major-station' : ''}" title="${s.name} (${s.city})">
-            <span>${s.isMajor ? '🏛️' : '🚉'}</span>
-            <span>${s.shortName}</span>
-          </div>
-        `,
-        iconAnchor: [30, 14]
-      });
-
-      const m = L.marker([s.lat, s.lon], { icon, zIndexOffset: s.isMajor ? 850 : 800 });
-
-      m.bindPopup(`
-        <div style="font-size:13px;line-height:1.5;min-width:230px;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-            <strong style="font-size:15px;color:#f59e0b;">${s.isMajor ? '🏛️' : '🚉'} ${s.name}</strong>
-          </div>
-          <div style="color:#cbd5e1;font-size:12px;margin-bottom:10px;">
-            Város: <b>${s.city}</b> ${s.isMajor ? '• Kiemelt Főpályaudvar' : '• Vasútállomás'}
-          </div>
-          <button class="btn btn-primary" style="width:100%;font-size:12px;padding:6px 10px;" onclick="loadMavStationDetails('${s.name}')">📋 Állomási menetrend megnyitása</button>
-        </div>
-      `);
-
-      mavStationsLayer.addLayer(m);
-    } catch (e) {
-      console.error(e);
+  // 1. Ismert állomások (főpályaudvarok, vármegyeszékhelyek koordinátákkal)
+  if (mavStations.length > 0) {
+    const known = mavStations.find(s => 
+      s.name.toLowerCase() === qLow || 
+      s.shortName.toLowerCase() === qLow ||
+      s.name.toLowerCase().includes(qLow) ||
+      qLow.includes(s.shortName.toLowerCase()) ||
+      (s.city && s.city.toLowerCase() === qLow)
+    );
+    if (known) {
+      map.flyTo([known.lat, known.lon], 14);
+      await loadMavStationDetails(known.name);
+      return;
     }
-  });
-}
+  }
 
-async function loadMavStationDetails(stationName, silent = false) {
+  // 2. BKK Stop ID esetén (pl. BKK_F01046)
+  if (q.startsWith('BKK_')) {
+    await loadStopDepartures(q);
+    return;
+  }
+
+  // 3. Tisztított állomásnév lekérdezése MÁV-tól
+  const cleanName = getCleanStationName(q);
+  showToast(`🔍 Menetrend keresése: ${cleanName}...`);
+  const success = await loadMavStationDetails(cleanName);
+  if (success) return;
+
+  showToast(`Nem található állomás: "${q}"`);
+}
+window.searchStationOrStop = searchStationOrStop;
+
+async function loadMavStationDetails(stationName, silent = false, bkkStopId = null) {
   if (!stationName) return;
   activeStationName = stationName.trim();
   const inp = document.getElementById('stationSearchInput');
@@ -997,10 +1001,12 @@ async function loadMavStationDetails(stationName, silent = false) {
 
   // Ha ismert állomás, odarepítjük a térképet
   if (!silent && mavStations.length > 0) {
+    const sLow = activeStationName.toLowerCase();
     const known = mavStations.find(s => 
-      s.name.toLowerCase() === activeStationName.toLowerCase() || 
-      s.shortName.toLowerCase() === activeStationName.toLowerCase() ||
-      activeStationName.toLowerCase().includes(s.shortName.toLowerCase())
+      s.name.toLowerCase() === sLow || 
+      s.shortName.toLowerCase() === sLow ||
+      s.name.toLowerCase().includes(sLow) ||
+      sLow.includes(s.shortName.toLowerCase())
     );
     if (known) {
       map.flyTo([known.lat, known.lon], 14);
@@ -1021,27 +1027,36 @@ async function loadMavStationDetails(stationName, silent = false) {
 
     document.getElementById('mavBoardSubtitle').textContent = 'MÁV-START ÉLŐ ÁLLOMÁSI MENETREND';
     document.getElementById('mavBoardTrainName').textContent = `🚉 ${data.station || activeStationName}`;
-    document.getElementById('mavBoardRelation').textContent = 'Élő indulások és érkezések • Vágánykijelző';
+    
+    // BKK kapcsolódási gomb ha van megadott stopId
+    let bkkBtnHtml = '';
+    if (bkkStopId) {
+      bkkBtnHtml = `<button class="btn btn-secondary" style="margin-top:6px;width:100%;font-size:11px;padding:4px 8px;" onclick="loadStopDepartures('${bkkStopId}', '${activeStationName}')">🚏 Helyi BKK Járatok & Indulások</button>`;
+    }
+    document.getElementById('mavBoardRelation').innerHTML = `<span>Élő indulások és érkezések • Vágánykijelző</span>${bkkBtnHtml}`;
+    
     const footerText = document.getElementById('mavBoardFooterText');
     if (footerText) {
       footerText.textContent = 'Kattints bármely vonatszámra az útvonal és térképi nyomvonal megtekintéséhez!';
     }
 
     const listEl = document.getElementById('mavBoardTimetableList');
-    if (data.html) {
+    if (data.html && data.html.trim().length > 100) {
       listEl.innerHTML = data.html;
     } else {
-      listEl.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;">Nincs elérhető menetrendi adat ehhez az állomáshoz.</div>';
+      listEl.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;">Nincs elérhető vasúti menetrend ehhez az állomáshoz.</div>';
     }
 
     if (!silent) {
       showToast(`🚉 ${activeStationName} menetrendje betöltve!`);
     }
+    return true;
   } catch (err) {
     console.error(err);
     if (!silent) {
       showToast(`Hiba az állomás betöltésekor: ${activeStationName}`);
     }
+    return false;
   }
 }
 window.loadMavStationDetails = loadMavStationDetails;
@@ -1065,37 +1080,20 @@ document.getElementById('tabLinesBtn').addEventListener('click', () => switchTab
 document.getElementById('tabMavBtn').addEventListener('click', () => switchTab('tabMav'));
 document.getElementById('tabStationsBtn').addEventListener('click', () => switchTab('tabStations'));
 
-// Vasútállomások vezérlők
-document.getElementById('btnSearchStation').addEventListener('click', () => {
+// Menetrend kereső vezérlők
+function triggerStationSearch() {
   const val = document.getElementById('stationSearchInput').value.trim();
-  if (val) loadMavStationDetails(val);
-});
-document.getElementById('stationSearchInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    const val = e.target.value.trim();
-    if (val) loadMavStationDetails(val);
-  }
-});
-
-document.querySelectorAll('.chip-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    loadMavStationDetails(btn.dataset.station);
-  });
-});
-
-const toggleStationsSw = document.getElementById('toggleMavStationsSwitch');
-if (toggleStationsSw) {
-  toggleStationsSw.addEventListener('change', (e) => {
-    showMavStations = e.target.checked;
-    renderMavStations();
-  });
+  if (val) searchStationOrStop(val);
 }
 
-const btnFitAllSt = document.getElementById('btnFitAllStations');
-if (btnFitAllSt) {
-  btnFitAllSt.addEventListener('click', () => {
-    map.flyTo([47.1625, 19.5033], 8);
-    showToast('🇭🇺 Teljes országos állomáshálózat');
+const btnSearchStation = document.getElementById('btnSearchStation');
+if (btnSearchStation) {
+  btnSearchStation.addEventListener('click', triggerStationSearch);
+}
+const stationSearchInput = document.getElementById('stationSearchInput');
+if (stationSearchInput) {
+  stationSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') triggerStationSearch();
   });
 }
 

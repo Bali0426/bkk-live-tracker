@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=20261018f">
+  <link rel="stylesheet" href="/static/css/style.css?v=20261018g">
 </head>
 <body class="dark-map">
   <div id="map"></div>
@@ -28,12 +28,12 @@
       </div>
     </div>
 
-    <!-- Fülek: Járművek vs Vonalak vs MÁV vs Állomások -->
+    <!-- Fülek: Járművek vs Vonalak vs MÁV vs Menetrend -->
     <div class="panel-tabs">
       <button class="panel-tab active" id="tabVehiclesBtn" data-tab="tabVehicles">🚌 BKK Járművek</button>
       <button class="panel-tab" id="tabLinesBtn" data-tab="tabLines">🛤️ BKK Vonalak</button>
       <button class="panel-tab" id="tabMavBtn" data-tab="tabMav">🚆 MÁV Vonatok</button>
-      <button class="panel-tab" id="tabStationsBtn" data-tab="tabStations">🚉 Állomások</button>
+      <button class="panel-tab" id="tabStationsBtn" data-tab="tabStations">📋 Menetrend</button>
     </div>
 
     <!-- 1. FÜL: JÁRMŰVEK -->
@@ -157,43 +157,15 @@
       </div>
     </div>
 
-    <!-- 4. FÜL: VASÚTÁLLOMÁSOK & MENETREND -->
+    <!-- 4. FÜL: MENETREND & KERESÉS -->
     <div class="tab-content hidden" id="tabStations">
       <div class="filter-row">
-        <input type="text" id="stationSearchInput" class="input-field" placeholder="Vasútállomás keresése (pl. Keleti, Nyugati, Győr)...">
-        <button class="btn btn-primary" id="btnSearchStation">Kijelző</button>
+        <input type="text" id="stationSearchInput" class="input-field" placeholder="Állomás vagy megálló keresése (pl. Keleti, Debrecen, Deák tér)...">
+        <button class="btn btn-primary" id="btnSearchStation">Keresés</button>
       </div>
 
-      <div class="quick-chips-container">
-        <div class="chips-title">Kiemelt pályaudvarok:</div>
-        <div class="quick-chips-row">
-          <button class="chip-btn" data-station="Budapest-Keleti">🏛️ Keleti pu.</button>
-          <button class="chip-btn" data-station="Budapest-Nyugati">🏛️ Nyugati pu.</button>
-          <button class="chip-btn" data-station="Budapest-Déli">🏛️ Déli pu.</button>
-          <button class="chip-btn" data-station="Kelenföld">🚉 Kelenföld</button>
-          <button class="chip-btn" data-station="Győr">🚉 Győr</button>
-          <button class="chip-btn" data-station="Debrecen">🚉 Debrecen</button>
-          <button class="chip-btn" data-station="Szeged">🚉 Szeged</button>
-          <button class="chip-btn" data-station="Miskolc-Tiszai">🚉 Miskolc</button>
-          <button class="chip-btn" data-station="Pécs">🚉 Pécs</button>
-          <button class="chip-btn" data-station="Szolnok">🚉 Szolnok</button>
-          <button class="chip-btn" data-station="Székesfehérvár">🚉 Székesfehérvár</button>
-          <button class="chip-btn" data-station="Nyíregyháza">🚉 Nyíregyháza</button>
-          <button class="chip-btn" data-station="Siófok">🚉 Siófok</button>
-        </div>
-      </div>
-
-      <div class="switch-group" id="stationSwitches">
-        <label class="switch-label">
-          <input type="checkbox" id="toggleMavStationsSwitch" checked>
-          <span class="slider round"></span>
-          <span class="switch-title"><span class="mode-dot dot-station"></span>Állomások a térképen</span>
-        </label>
-      </div>
-
-      <div class="status-row">
-        <span id="stationTabStats">40+ vasútállomás elérhető</span>
-        <button class="btn-text-action" id="btnFitAllStations">🇭🇺 Mind mutatása</button>
+      <div class="station-hint-box" style="margin-top:10px;padding:10px 12px;background:rgba(30,41,59,0.7);border-radius:10px;border:1px solid rgba(255,255,255,0.1);font-size:12px;color:#cbd5e1;line-height:1.5;">
+        💡 <strong>Tipp:</strong> Kattints bármelyik megállóra a térképen, vagy keress rá név szerint a menetrendi indulások és vágányok azonnali megnyitásához.
       </div>
     </div>
   </div>
@@ -257,6 +229,6 @@
   <div class="toast" id="toast"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="/static/js/app.js?v=20261018f"></script>
+  <script src="/static/js/app.js?v=20261018h"></script>
 </body>
 </html>

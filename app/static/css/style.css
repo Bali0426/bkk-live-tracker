@@ -415,34 +415,6 @@ input:checked + .slider.round:before {
   z-index: 1000 !important;
 }
 
-/* 🚉 Vasútállomások és Pályaudvarok kiemelése BKK megállók között */
-.stop-marker-train-station {
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  border: 2px solid #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  line-height: 1;
-  animation: pulse-rail 2.5s infinite;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.stop-marker-train-station:hover {
-  transform: scale(1.35);
-  box-shadow: 0 0 20px rgba(251, 191, 36, 1);
-  z-index: 1000 !important;
-}
-
-@keyframes pulse-rail {
-  0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.7); }
-  50% { box-shadow: 0 0 18px rgba(245, 158, 11, 1); }
-}
-
 /* Tooltip jelvények */
 .stop-badge {
   display: inline-block;
@@ -824,91 +796,6 @@ input:checked + .slider.round:before {
 .mav-board-list table.vt img {
   vertical-align: middle;
   filter: invert(0.8);
-}
-
-/* 🚉 Vasútállomások Fül Gyorsgombok (Quick Chips) */
-.quick-chips-container {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.chips-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.quick-chips-row {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
-}
-
-.chip-btn {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f8fafc;
-  padding: 5px 10px;
-  border-radius: 14px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.chip-btn:hover {
-  background: #f59e0b;
-  border-color: #fbbf24;
-  color: #0f172a;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.4);
-}
-
-/* 🚉 Országos Vasútállomás Térképi Markerek */
-.station-div-icon {
-  background: transparent !important;
-  border: none !important;
-}
-
-.station-map-marker {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #090d16;
-  border: 1.5px solid #f59e0b;
-  border-radius: 8px;
-  padding: 2px 7px 2px 5px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #f8fafc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.station-map-marker.major-station {
-  border: 2px solid #fbbf24;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.station-map-marker:hover {
-  transform: scale(1.22);
-  box-shadow: 0 0 18px rgba(251, 191, 36, 0.95);
-  z-index: 1000 !important;
 }
 
 /* 📋 MÁV Állomási Menetrend Táblázat (table.af) */
