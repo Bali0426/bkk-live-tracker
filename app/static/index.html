@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BKK Live Tracker & FUTÁR Kijelző</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Bal felső vezérlőpanel -->
+  <div class="top-panel">
+    <div class="top-row">
+      <div class="brand">
+        <span class="pulse-dot"></span>
+        <span>BKK Live Tracker</span>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-icon" id="btnToggleStops" title="Megállók megjelenítése a térképen">🚏 Megállók</button>
+        <button class="btn btn-icon" id="btnLocate" title="Saját helyzet">📍</button>
+        <button class="btn btn-icon" id="btnSettings" title="API Kulcs beállítása">⚙️</button>
+        <button class="btn btn-primary" id="btnRefresh" title="Frissítés">🔄</button>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <input type="text" id="routeFilter" class="input-field" placeholder="Járat vagy célállomás szűrése (pl. 4, M3)...">
+      <input type="text" id="stopInput" class="input-field stop-id-input" placeholder="Stop ID (pl. BKK_F01046)">
+      <button class="btn btn-secondary" id="btnLoadStop">Kijelző</button>
+    </div>
+
+    <div class="status-row">
+      <span id="vehicleStats">0 jármű a térképen</span>
+      <span id="lastUpdated">Betöltés...</span>
+    </div>
+  </div>
+
+  <!-- Jobb oldali FUTÁR Megállóhelyi Kijelző Panel -->
+  <div class="futar-board hidden" id="futarBoard">
+    <div class="board-header">
+      <div>
+        <div class="board-subtitle">FUTÁR ÉLŐ INDULÁSOK</div>
+        <div class="board-title" id="boardStopName">Megálló neve</div>
+        <div class="board-stop-id">
+          <span id="boardStopId">BKK_F01046</span>
+          <button class="btn-copy" id="btnCopyStopId" title="Stop ID másolása widgethez">📋 Widget ID másolása</button>
+        </div>
+      </div>
+      <button class="btn-close" id="btnCloseBoard">✕</button>
+    </div>
+    <div class="board-list" id="boardDeparturesList">
+      <!-- Dinamikus indulási sorok -->
+    </div>
+    <div class="board-footer">
+      <span>Widget API végpont: <code id="boardApiUrl">/api/departures/BKK_F01046</code></span>
+    </div>
+  </div>
+
+  <!-- API Kulcs Beállító Modal (ha nincs .env-ben megadva) -->
+  <div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal-card">
+      <h3>BKK OpenData API Kulcs</h3>
+      <p>
+        Add meg a BKK API kulcsodat. Ha a szerver <code>.env</code> fájljában már beállítottad, ezt a mezőt üresen is hagyhatod!
+      </p>
+      <input type="text" id="apiKeyInput" class="input-field" placeholder="BKK API kulcs (opcionális, ha .env-ben van)">
+      <div class="modal-actions">
+        <button class="btn btn-icon" id="btnCancelModal">Bezárás</button>
+        <button class="btn btn-primary" id="btnSaveModal">Mentés</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

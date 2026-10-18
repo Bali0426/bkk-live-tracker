@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables (NEVER commit your BKK API key!)
+.env
+
+# IDE & Antigravity / VSCode files
+.vscode/
+.idea/
+.DS_Store
+*.swp
