@@ -8,7 +8,9 @@ from app.config import settings
 from app.services.futar_client import (
     fetch_vehicles_for_location,
     fetch_stops_for_location,
-    fetch_departures_for_stop
+    fetch_departures_for_stop,
+    fetch_route_details,
+    fetch_transit_network
 )
 from app.services.gtfs_rt_client import fetch_gtfs_rt_vehicle_positions
 
@@ -101,6 +103,37 @@ async def get_stop_departures(
     try:
         api_key = get_key(key, x_bkk_key)
         return await fetch_departures_for_stop(stop_id, limit, minutes_after, api_key)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"BKK API hiba: {str(e)}")
+
+
+@app.get("/api/routes/{route_id}")
+async def get_route(
+    route_id: str,
+    key: Optional[str] = Query(None),
+    x_bkk_key: Optional[str] = Header(None)
+):
+    """Lekéri egy járat (pl. M3, 4, 105) nyomvonalának polylines koordinátáit és adatait."""
+    try:
+        api_key = get_key(key, x_bkk_key)
+        return await fetch_route_details(route_id, api_key)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"BKK API hiba: {str(e)}")
+
+
+@app.get("/api/network")
+async def get_transit_network(
+    key: Optional[str] = Query(None),
+    x_bkk_key: Optional[str] = Header(None)
+):
+    """Budapest törzshálózatának (M1-M4 metrók és főbb villamosvonalak) nyomvonalai."""
+    try:
+        api_key = get_key(key, x_bkk_key)
+        return await fetch_transit_network(api_key)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:

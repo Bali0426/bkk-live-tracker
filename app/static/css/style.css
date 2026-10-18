@@ -176,6 +176,88 @@ body, html {
   justify-content: space-between;
 }
 
+/* Közlekedési mód szűrők / chipek */
+.mode-toggles-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.mode-toggles-row::-webkit-scrollbar {
+  height: 4px;
+}
+
+.mode-toggles-row::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.mode-chip:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #f1f5f9;
+}
+
+.mode-chip.active {
+  background: rgba(15, 23, 42, 0.95);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.mode-chip.active .mode-dot {
+  opacity: 1;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.dot-subway { background: #FFD800; color: #FFD800; }
+.dot-tram { background: #FFD800; color: #FFD800; }
+.dot-trolley { background: #E41F18; color: #E41F18; }
+.dot-bus { background: #009EE3; color: #009EE3; }
+.dot-rail { background: #007B3B; color: #007B3B; }
+
+/* Vonalhálózat nyomvonal stílusok */
+.transit-line-tooltip {
+  background: #0f172a !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+  padding: 3px 8px !important;
+}
+.transit-line-tooltip::before {
+  border-top-color: #0f172a !important;
+}
+
 /* Vehicle markers */
 .v-marker {
   display: flex;
@@ -222,21 +304,23 @@ body, html {
   z-index: 1000 !important;
 }
 
-/* 🚏 Per-irány megállók (Platform / Oszlop) - Korall / Rózsaszín kerek pont */
+/* 🚏 Per-irány megállók (Platform / Oszlop) - OSM Transport stílusú kék-lila pont */
 .stop-marker-dir {
-  width: 13px;
-  height: 13px;
-  background: #f43f5e;
+  width: 12px;
+  height: 12px;
+  background: #6366f1;
   border: 2px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(244, 63, 94, 0.5);
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 .stop-marker-dir:hover {
   transform: scale(1.4);
-  box-shadow: 0 0 12px rgba(244, 63, 94, 0.9);
+  background: #a5b4fc;
+  box-shadow: 0 0 12px rgba(165, 180, 252, 0.95);
   z-index: 1000 !important;
 }
 
@@ -250,15 +334,28 @@ body, html {
   margin-bottom: 4px;
 }
 .stop-badge-parent {
-  background: rgba(168, 85, 247, 0.25);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.4);
 }
 .stop-badge-dir {
-  background: rgba(244, 63, 94, 0.2);
-  color: #fda4af;
-  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: rgba(99, 102, 241, 0.2);
+  color: #c7d2fe;
+  border: 1px solid rgba(99, 102, 241, 0.35);
 }
+
+/* 🏢 Megállócsoport lekerekített burkok (OSM Transport stílus) */
+.stop-group-polygon {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stop-group-polygon:hover {
+  fill-opacity: 0.38 !important;
+  stroke: #818cf8 !important;
+  stroke-width: 2.2px !important;
+}
+
 
 /* FUTÁR Departure Board */
 .futar-board {

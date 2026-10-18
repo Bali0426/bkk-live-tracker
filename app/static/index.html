@@ -20,6 +20,7 @@
         <span>BKK Live Tracker</span>
       </div>
       <div class="action-buttons">
+        <button class="btn btn-icon" id="btnToggleLines" title="Vonalhálózat (Metró & Villamos nyomvonalak)">🛤️ Vonalak</button>
         <button class="btn btn-icon" id="btnToggleStops" title="Megállók megjelenítése a térképen">🚏 Megállók</button>
         <button class="btn btn-icon" id="btnLocate" title="Saját helyzet">📍</button>
         <button class="btn btn-icon" id="btnTheme" title="Térkép téma (Sötét / Világos)">🌙</button>
@@ -32,6 +33,14 @@
       <input type="text" id="routeFilter" class="input-field" placeholder="Járat vagy célállomás szűrése (pl. 4, M3)...">
       <input type="text" id="stopInput" class="input-field stop-id-input" placeholder="Stop ID (pl. BKK_F01046)">
       <button class="btn btn-secondary" id="btnLoadStop">Kijelző</button>
+    </div>
+
+    <div class="mode-toggles-row" id="modeToggles">
+      <button class="mode-chip active" data-mode="SUBWAY" title="Metró járatok és vonalak"><span class="mode-dot dot-subway"></span>🚇 Metró</button>
+      <button class="mode-chip active" data-mode="TRAM" title="Villamos járatok"><span class="mode-dot dot-tram"></span>🚋 Villamos</button>
+      <button class="mode-chip active" data-mode="TROLLEYBUS" title="Trolibuszok"><span class="mode-dot dot-trolley"></span>🚎 Troli</button>
+      <button class="mode-chip active" data-mode="BUS" title="Autóbuszok"><span class="mode-dot dot-bus"></span>🚌 Busz</button>
+      <button class="mode-chip active" data-mode="RAIL" title="HÉV és Vonat"><span class="mode-dot dot-rail"></span>🚆 HÉV / Vonat</button>
     </div>
 
     <div class="status-row">
