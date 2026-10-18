@@ -7,8 +7,8 @@ let activeStopId = null;
 const map = L.map('map', { zoomControl: false }).setView([47.4979, 19.0402], 14);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO | Adatforrás: BKK Zrt.',
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> közreműködők | Adatforrás: BKK Zrt.',
   maxZoom: 19
 }).addTo(map);
 
