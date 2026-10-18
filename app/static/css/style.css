@@ -196,18 +196,68 @@ body, html {
   z-index: 1000 !important;
 }
 
+/* Megálló markerek: Gyűjtőmegállók és Per-irány megállók megkülönböztetése */
 .stop-marker {
-  width: 14px;
-  height: 14px;
-  background: #f43f5e;
-  border: 2px solid #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.stop-marker:hover {
-  transform: scale(1.3);
+
+/* 🏢 Gyűjtőmegállók (Stop Area / Csomópont) - Lila kitűző */
+.stop-marker-parent {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+}
+.stop-marker-parent:hover {
+  transform: scale(1.35);
+  box-shadow: 0 0 16px rgba(192, 132, 252, 0.95);
+  z-index: 1000 !important;
+}
+
+/* 🚏 Per-irány megállók (Platform / Oszlop) - Korall / Rózsaszín kerek pont */
+.stop-marker-dir {
+  width: 13px;
+  height: 13px;
+  background: #f43f5e;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(244, 63, 94, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stop-marker-dir:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.9);
+  z-index: 1000 !important;
+}
+
+/* Tooltip jelvények */
+.stop-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.stop-badge-parent {
+  background: rgba(168, 85, 247, 0.25);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+.stop-badge-dir {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.35);
 }
 
 /* FUTÁR Departure Board */

@@ -154,13 +154,22 @@ async def fetch_stops_for_location(
     stops = []
     for s in list_items:
         if s.get("lat") and s.get("lon"):
+            is_parent = bool(
+                s.get("locationType") == 1
+                or s.get("locationSubType") == "stop-area"
+                or (s.get("id") or "").startswith("BKK_CS")
+            )
             stops.append({
                 "stopId": s.get("id"),
                 "name": s.get("name"),
                 "lat": s.get("lat"),
                 "lon": s.get("lon"),
                 "direction": s.get("direction", ""),
-                "type": s.get("type", "")
+                "type": s.get("type", ""),
+                "locationType": s.get("locationType", 0),
+                "locationSubType": s.get("locationSubType", ""),
+                "parentStationId": s.get("parentStationId", ""),
+                "isStopArea": is_parent
             })
 
     result = {"count": len(stops), "stops": stops}
@@ -203,7 +212,7 @@ async def fetch_departures_for_stop(
     routes_map = normalize_references(refs.get("routes"))
     trips_map = normalize_references(refs.get("trips"))
 
-    stop_info = stops_map.get(stop_id, {"id": stop_id, "name": stop_id})
+    stop_info = stops_map.get(stop_id) or (list(stops_map.values())[0] if stops_map else {"id": stop_id, "name": stop_id})
     now_sec = time.time()
 
     departures = []

@@ -123,17 +123,49 @@ async function fetchStops() {
     stopLayer.clearLayers();
 
     (data.stops || []).forEach(s => {
+      const isParent = Boolean(s.isStopArea || s.locationType === 1);
+      
+      let markerHtml = '';
+      let iconSize = [13, 13];
+      let iconAnchor = [6.5, 6.5];
+      
+      if (isParent) {
+        iconSize = [20, 20];
+        iconAnchor = [10, 10];
+        markerHtml = `<div class="stop-marker stop-marker-parent" title="${s.name} (Gyűjtőállomás)">🏢</div>`;
+      } else {
+        iconSize = [13, 13];
+        iconAnchor = [6.5, 6.5];
+        markerHtml = `<div class="stop-marker stop-marker-dir" title="${s.name} (Per-irány megálló)"></div>`;
+      }
+
       const icon = L.divIcon({
         className: '',
-        html: `<div class="stop-marker" title="${s.name} (${s.stopId})"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
+        html: markerHtml,
+        iconSize: iconSize,
+        iconAnchor: iconAnchor
       });
+
       const marker = L.marker([s.lat, s.lon], { icon });
-      marker.bindTooltip(`<b>${s.name}</b><br><span style="color:#cbd5e1;font-size:11px;">${s.stopId}</span>`, {
+      
+      const badgeHtml = isParent
+        ? `<span class="stop-badge stop-badge-parent">🏢 Gyűjtőmegálló</span>`
+        : `<span class="stop-badge stop-badge-dir">🚏 Per-irány megálló${s.direction ? ` (${s.direction}°)` : ''}</span>`;
+      
+      const typeInfo = s.type ? `<span style="color:#94a3b8;font-size:11px;"> • ${s.type}</span>` : '';
+
+      marker.bindTooltip(`
+        <div style="font-size:12px;line-height:1.4;">
+          ${badgeHtml}${typeInfo}<br>
+          <strong style="font-size:13px;color:#f8fafc;">${s.name}</strong><br>
+          <span style="color:#94a3b8;font-size:11px;">ID: <code>${s.stopId}</code></span>
+          ${s.parentStationId ? `<br><span style="color:#64748b;font-size:10px;">Gyűjtő ID: ${s.parentStationId}</span>` : ''}
+        </div>
+      `, {
         direction: 'top',
-        offset: [0, -6]
+        offset: isParent ? [0, -10] : [0, -7]
       });
+
       marker.on('click', () => loadStopDepartures(s.stopId));
       stopLayer.addLayer(marker);
     });
@@ -198,7 +230,7 @@ document.getElementById('btnToggleStops').addEventListener('click', (e) => {
   showStops = !showStops;
   e.currentTarget.classList.toggle('active', showStops);
   fetchStops();
-  if (showStops) showToast('Kattints egy piros megállóra az élő indulásokhoz!');
+  if (showStops) showToast('🚏 Megállók: 🏢 Lila = Gyűjtőállomás | 🔴 Korall = Per-irány megálló');
 });
 
 document.getElementById('btnLoadStop').addEventListener('click', () => {
