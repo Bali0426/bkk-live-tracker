@@ -1,12 +1,23 @@
-FROM python:3.11-slim
+# Build stage
+FROM rust:1.80-alpine AS builder
 
-WORKDIR /code
+RUN apk add --no-cache musl-dev
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+WORKDIR /app
 COPY . .
+RUN cargo build --release
+
+# Runtime stage
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates tzdata
+
+WORKDIR /app
+COPY --from=builder /app/target/release/bkk-live-tracker /app/bkk-live-tracker
 
 EXPOSE 8000
 
-CMD ["python", "run.py"]
+ENV HOST=0.0.0.0
+ENV PORT=8000
+
+CMD ["/app/bkk-live-tracker"]

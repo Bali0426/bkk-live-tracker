@@ -1,44 +1,27 @@
-# 🚋 BKK Live Tracker & DIY API Hub
+# 🚋 BKK Live Tracker & DIY API Hub (Rust Edition)
 
-Könnyűsúlyú, **Python (FastAPI)** alapú élő BKK térkép, megállóhelyi FUTÁR kijelző és API központ saját felhasználásra, Android widgetekhez (KWGT) és DIY (ESP32 / Home Assistant) projektekhez.
+Könnyűsúlyú, szupergyors **Rust (Axum + Tokio)** alapú élő BKK térkép, megállóhelyi FUTÁR kijelző és API központ saját felhasználásra, Android widgetekhez (KWGT) és DIY (ESP32 / Home Assistant) projektekhez.
 
-## ✨ Főbb funkciók
-- **Élő Járműtérkép:** Buszok, villamosok, trolik, metrók és HÉV-ek valós idejű követése hivatalos BKK színkódokkal.
-- **Megállóhelyi FUTÁR Kijelző:** Kattints bármelyik megállóra a térképen (vagy keress `stopId` alapján), és lásd percre pontosan a következő indulásokat.
-- **Beépített Cache & CORS védelem:** A Python backend kezeli a BKK API hívásokat, elrejti az API kulcsot, és memóriabeli gyorsítótárral védi a kvótádat.
-- **GTFS-Realtime (Protobuf) támogatás:** Kész modul a bináris `.pb` feedek (`VehiclePositions.pb`) dekódolására.
-- **Widget-barát JSON API:** Tiszta, sallangmentes végpontok Android KWGT widgethez vagy ESP32 kijelzőhöz.
+## ✨ Főbb funkciók & Rust Optimalizációk
+- **Nagy Teljesítmény & Alacsony Memóriahasználat:** Pár megabájtos memórialábnyom a korábbi Python backendhez képest.
+- **Request Coalescing Cache:** A `moka` gyorsítótár egyidejű lekérések esetén összevonja a hívásokat, megvédve a BKK/MÁV API kvótát.
+- **Párhuzamosított hálózati lekérések:** A budapesti törzshálózat és a MÁV adatok szinkron/szekvenciális lekérés helyett korlátozott párhuzamossággal töltődnek be.
+- **GTFS-Realtime (Protobuf) integráció:** Bináris `.pb` feed dekódolás közvetlenül Rust `prost` struktúrákkal.
+- **Beágyazott statikus frontend:** `rust-embed` segítségével a HTML/CSS/JS frontend egyetlen önálló binárisba fordul be.
+- **Élő Járműtérkép:** BKK és MÁV/GYSEV járatok valós idejű követése hivatalos színkódokkal és sebességszámítással.
+- **vagonWEB integráció:** Tervezett és tényleges szerelvényösszeállítások.
 
 ---
 
-## 🚀 Gyorsindítás (Helyi gépen vagy Antigravity-ben)
+## 🚀 Gyorsindítás
 
-### 1. Virtuális környezet és függőségek telepítése
+### Rust futtatás:
 ```bash
-python -m venv venv
-# Windows esetén:
-venv\Scripts\activate
-# Mac/Linux esetén:
-source venv/bin/activate
-
-pip install -r requirements.txt
+cargo run --release
 ```
+Vagy kattints kétszer a `run.bat` fájlra Windows alatt.
 
-### 2. BKK API kulcs beállítása
-Másold le a `.env.example` fájlt `.env` néven, és írd bele a [BKK OpenData](https://opendata.bkk.hu/) portálon igényelt kulcsodat:
-```bash
-cp .env.example .env
-```
-*(Tipp: Alapértelmezetten a rendszer automatikusan a publikus `bkk-web` kulccsal indul el azonnal, regisztráció nélkül is! Egyedi kulcsot a `.env`-ben vagy a felületen a ⚙️ Beállítások gombbal adhatsz meg.)*
-
-### 3. Alkalmazás indítása
-Windows alatt egyszerűen kattints kétszer a `run.bat` fájlra, vagy terminálból:
-```bash
-python run.py
-```
 Nyisd meg a böngésződben: **http://localhost:8000**
-
-Interaktív Swagger API dokumentáció: **http://localhost:8000/docs**
 
 ---
 

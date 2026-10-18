@@ -11,6 +11,10 @@ env/
 # Environment variables (NEVER commit your BKK API key!)
 .env
 
+# Rust build artifacts
+target/
+Cargo.lock
+
 # IDE & Antigravity / VSCode files
 .vscode/
 .idea/
