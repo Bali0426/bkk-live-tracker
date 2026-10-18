@@ -29,9 +29,10 @@ Másold le a `.env.example` fájlt `.env` néven, és írd bele a [BKK OpenData]
 ```bash
 cp .env.example .env
 ```
-*(Tipp: Ha nem állítasz be `.env` fájlt, a webes felületen a ⚙️ Beállítások gombbal böngészőből is megadhatod a kulcsot!)*
+*(Tipp: Alapértelmezetten a rendszer automatikusan a publikus `bkk-web` kulccsal indul el azonnal, regisztráció nélkül is! Egyedi kulcsot a `.env`-ben vagy a felületen a ⚙️ Beállítások gombbal adhatsz meg.)*
 
 ### 3. Alkalmazás indítása
+Windows alatt egyszerűen kattints kétszer a `run.bat` fájlra, vagy terminálból:
 ```bash
 python run.py
 ```

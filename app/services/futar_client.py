@@ -24,10 +24,27 @@ class SimpleTTLCache:
 cache = SimpleTTLCache(ttl_seconds=settings.CACHE_TTL_SECONDS)
 
 
+def normalize_references(ref_obj: Any) -> Dict[str, Any]:
+    """BKK OTP API references szótárak és listák normalizálása id -> obj leképezésre."""
+    if isinstance(ref_obj, dict):
+        return ref_obj
+    elif isinstance(ref_obj, list):
+        return {item["id"]: item for item in ref_obj if isinstance(item, dict) and "id" in item}
+    return {}
+
+
+def format_hex_color(col: Optional[str], default: str) -> str:
+    """Biztosítja a helyes CSS #RRGGBB színkódot."""
+    if not col:
+        return default
+    col = str(col).strip()
+    return col if col.startswith("#") else f"#{col}"
+
+
 def resolve_api_key(override_key: Optional[str] = None) -> str:
     key = (override_key or settings.BKK_API_KEY or "").strip()
     if not key or key == "ide_ird_a_bkk_api_kulcsodat":
-        raise ValueError("Hiányzó BKK API kulcs! Állítsd be a .env fájlban vagy add meg a felületen.")
+        key = "bkk-web"
     return key
 
 
@@ -62,8 +79,8 @@ async def fetch_vehicles_for_location(
     data = raw.get("data", {})
     list_items = data.get("list", [])
     refs = data.get("references", {})
-    routes_map = {r["id"]: r for r in refs.get("routes", []) if "id" in r}
-    trips_map = {t["id"]: t for t in refs.get("trips", []) if "id" in t}
+    routes_map = normalize_references(refs.get("routes"))
+    trips_map = normalize_references(refs.get("trips"))
 
     vehicles = []
     for v in list_items:
@@ -75,8 +92,8 @@ async def fetch_vehicles_for_location(
         route = routes_map.get(route_id, {})
 
         short_name = route.get("shortName") or v.get("label") or (route_id or "").replace("BKK_", "")
-        bg_color = f"#{route.get('color', '009EE3')}" if route.get("color") else "#009EE3"
-        text_color = f"#{route.get('textColor', 'FFFFFF')}" if route.get("textColor") else "#FFFFFF"
+        bg_color = format_hex_color(route.get("color"), "#009EE3")
+        text_color = format_hex_color(route.get("textColor"), "#FFFFFF")
 
         vehicles.append({
             "vehicleId": v.get("vehicleId"),
@@ -182,9 +199,9 @@ async def fetch_departures_for_stop(
     entry = data.get("entry", {})
     refs = data.get("references", {})
 
-    stops_map = {s["id"]: s for s in refs.get("stops", []) if "id" in s}
-    routes_map = {r["id"]: r for r in refs.get("routes", []) if "id" in r}
-    trips_map = {t["id"]: t for t in refs.get("trips", []) if "id" in t}
+    stops_map = normalize_references(refs.get("stops"))
+    routes_map = normalize_references(refs.get("routes"))
+    trips_map = normalize_references(refs.get("trips"))
 
     stop_info = stops_map.get(stop_id, {"id": stop_id, "name": stop_id})
     now_sec = time.time()
@@ -209,8 +226,8 @@ async def fetch_departures_for_stop(
         diff_min = max(0, math.floor((effective_time - now_sec) / 60))
 
         short_name = route.get("shortName") or (route_id or "").replace("BKK_", "")
-        bg_color = f"#{route.get('color', '009EE3')}" if route.get("color") else "#009EE3"
-        text_color = f"#{route.get('textColor', 'FFFFFF')}" if route.get("textColor") else "#FFFFFF"
+        bg_color = format_hex_color(route.get("color"), "#009EE3")
+        text_color = format_hex_color(route.get("textColor"), "#FFFFFF")
 
         departures.append({
             "routeShortName": short_name,

@@ -34,9 +34,9 @@ async def fetch_gtfs_rt_vehicle_positions(
     for entity in feed.entity[:limit]:
         if entity.HasField("vehicle"):
             v = entity.vehicle
-            pos = v.position
-            trip = v.trip
-            veh_desc = v.vehicle
+            pos = v.position if v.HasField("position") else None
+            trip = v.trip if v.HasField("trip") else None
+            veh_desc = v.vehicle if v.HasField("vehicle") else None
             vehicles.append({
                 "entityId": entity.id,
                 "vehicleId": veh_desc.id if veh_desc else "",
@@ -46,8 +46,8 @@ async def fetch_gtfs_rt_vehicle_positions(
                 "tripId": trip.trip_id if trip else "",
                 "lat": round(pos.latitude, 6) if pos else None,
                 "lon": round(pos.longitude, 6) if pos else None,
-                "bearing": round(pos.bearing, 1) if pos else None,
-                "speedKmh": round((pos.speed or 0) * 3.6) if pos else 0,
+                "bearing": round(pos.bearing, 1) if (pos and pos.HasField("bearing")) else None,
+                "speedKmh": round((pos.speed or 0) * 3.6) if (pos and pos.HasField("speed")) else 0,
                 "timestamp": v.timestamp
             })
 

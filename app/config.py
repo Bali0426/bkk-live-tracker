@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    BKK_API_KEY: str = os.getenv("BKK_API_KEY", "")
+    BKK_API_KEY: str = os.getenv("BKK_API_KEY", "bkk-web").strip()
     CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "8"))
     
     # BKK FUTÁR REST API alap URL

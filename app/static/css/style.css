@@ -134,11 +134,19 @@ body, html {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 14px;
   border: 2px solid #fff;
   font-weight: 800;
   font-size: 11px;
+  padding: 0 4px;
+  white-space: nowrap;
   box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.v-marker:hover {
+  transform: scale(1.15);
+  z-index: 1000 !important;
 }
 
 .stop-marker {
@@ -148,6 +156,11 @@ body, html {
   border: 2px solid #fff;
   border-radius: 4px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.stop-marker:hover {
+  transform: scale(1.3);
 }
 
 /* FUTÁR Departure Board */

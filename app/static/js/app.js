@@ -77,12 +77,15 @@ function renderVehicles() {
     if (q && !shortName.includes(q) && !headsign.includes(q)) return;
 
     count++;
-    const size = v.routeShortName.length > 3 ? 32 : 28;
+    const name = String(v.routeShortName || '');
+    const isLong = name.length > 3;
+    const width = isLong ? Math.max(34, name.length * 8 + 10) : 28;
+    const height = 28;
     const icon = L.divIcon({
       className: '',
-      html: `<div class="v-marker" style="width:${size}px;height:${size}px;background:${v.color};color:${v.textColor};">${v.routeShortName}</div>`,
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2]
+      html: `<div class="v-marker" style="min-width:${width}px;height:${height}px;background:${v.color};color:${v.textColor};">${name}</div>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2]
     });
 
     const m = L.marker([v.lat, v.lon], { icon });
@@ -127,6 +130,10 @@ async function fetchStops() {
         iconAnchor: [7, 7]
       });
       const marker = L.marker([s.lat, s.lon], { icon });
+      marker.bindTooltip(`<b>${s.name}</b><br><span style="color:#cbd5e1;font-size:11px;">${s.stopId}</span>`, {
+        direction: 'top',
+        offset: [0, -6]
+      });
       marker.on('click', () => loadStopDepartures(s.stopId));
       stopLayer.addLayer(marker);
     });
@@ -230,7 +237,11 @@ document.getElementById('btnCancelModal').addEventListener('click', () => {
 
 document.getElementById('btnSaveModal').addEventListener('click', () => {
   customApiKey = document.getElementById('apiKeyInput').value.trim();
-  localStorage.setItem(STORAGE_KEY, customApiKey);
+  if (customApiKey) {
+    localStorage.setItem(STORAGE_KEY, customApiKey);
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
   document.getElementById('settingsModal').classList.add('hidden');
   refreshAll();
 });

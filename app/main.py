@@ -28,8 +28,11 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
-def get_key(query_key: Optional[str], header_key: Optional[str]) -> Optional[str]:
-    return query_key or header_key or settings.BKK_API_KEY
+def get_key(query_key: Optional[str], header_key: Optional[str]) -> str:
+    k = (query_key or header_key or settings.BKK_API_KEY or "").strip()
+    if not k or k == "ide_ird_a_bkk_api_kulcsodat":
+        return "bkk-web"
+    return k
 
 
 @app.get("/", include_in_schema=False)
