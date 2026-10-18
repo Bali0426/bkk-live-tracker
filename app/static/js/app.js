@@ -589,6 +589,7 @@ async function loadStopDepartures(stopId, stopName = '', silent = false) {
 
     const board = document.getElementById('futarBoard');
     board.classList.remove('hidden');
+    board.classList.remove('board-wide');
 
     const displayName = data.stopName || stopName || activeStopId;
     document.getElementById('boardSubtitle').textContent = 'FUTÁR ÉLŐ ADATOK & INDULÁSOK';
@@ -922,6 +923,7 @@ async function loadMavTrainDetails(elviraId, trainNumber, encodedRelation = '', 
 
     const board = document.getElementById('futarBoard');
     board.classList.remove('hidden');
+    board.classList.add('board-wide');
 
     document.getElementById('boardSubtitle').textContent = 'MÁV-START ÉLŐ VONAT MENETREND';
     document.getElementById('boardStopName').textContent = `🚆 ${headerLabel}`;
@@ -1068,16 +1070,22 @@ function renderVagonwebCard() {
       <div class="vagonweb-train-scroll">
         <div class="vagonweb-train-row">
           ${comp.cars.map(c => `
-            <div class="vagonweb-car ${c.isLoco ? 'is-loco' : ''}" title="${escapeHtml(c.operator)} ${escapeHtml(c.carType)} ${escapeHtml(c.carSub)}">
+            <div class="vagonweb-car ${c.isLoco ? 'is-loco' : ''} ${c.isEmu ? 'is-emu' : ''}" title="${escapeHtml(c.operator)} ${escapeHtml(c.carType)} ${escapeHtml(c.carSub)}">
               <div class="car-top">
-                ${c.carNumber ? `<span class="car-num">${escapeHtml(c.carNumber)}</span>` : `<span class="car-loco-label">MOZDONY</span>`}
-                ${c.carClass ? `<span class="car-class-badge">${escapeHtml(c.carClass)}.</span>` : ''}
+                ${c.isEmu
+                  ? `<span class="car-emu-label">MOTORVONAT</span>`
+                  : (c.isLoco
+                      ? `<span class="car-loco-label">MOZDONY</span>`
+                      : (c.carNumber ? `<span class="car-num">${escapeHtml(c.carNumber)}</span>` : `<span class="car-num-empty">Kocsi</span>`)
+                    )
+                }
+                ${c.carClass ? `<span class="car-class-badge">${escapeHtml(c.carClass)}. o.</span>` : ''}
               </div>
               <div class="car-img-wrap">
                 ${c.imgUrl ? `<img src="${c.imgUrl}" alt="${escapeHtml(c.carType)}" class="car-img" loading="lazy">` : `<div style="font-size:10px;color:#94a3b8;">${escapeHtml(c.carType)}</div>`}
               </div>
               <div class="car-bottom">
-                <span class="car-type">${escapeHtml(c.carType || (c.isLoco ? 'Mozdony' : 'Kocsi'))}</span>
+                <span class="car-type">${escapeHtml(c.carType || (c.isLoco ? 'Mozdony' : (c.isEmu ? 'Motorvonat' : 'Kocsi')))}</span>
                 ${c.carSub ? `<span class="car-sub">${escapeHtml(c.carSub)}</span>` : ''}
                 ${c.operator ? `<span class="car-op">${escapeHtml(c.operator)}</span>` : ''}
               </div>
@@ -1294,6 +1302,7 @@ async function loadMavStationDetails(stationName, silent = false, bkkStopId = nu
 
     const board = document.getElementById('futarBoard');
     board.classList.remove('hidden');
+    board.classList.remove('board-wide');
 
     document.getElementById('boardSubtitle').textContent = 'MÁV-START ÉLŐ ÁLLOMÁSI MENETREND';
     document.getElementById('boardStopName').textContent = `🚉 ${data.station || activeStationName}`;
@@ -1447,7 +1456,9 @@ document.getElementById('stopInput').addEventListener('keydown', (e) => {
 });
 
 document.getElementById('btnCloseBoard').addEventListener('click', () => {
-  document.getElementById('futarBoard').classList.add('hidden');
+  const b = document.getElementById('futarBoard');
+  b.classList.add('hidden');
+  b.classList.remove('board-wide');
   mavRouteLayer.clearLayers();
   activeBoardMode = null;
   activeStopId = null;
