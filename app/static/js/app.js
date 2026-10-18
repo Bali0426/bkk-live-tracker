@@ -31,6 +31,11 @@ let mavTrains = [];
 let mavStations = [];
 let mavAvgDelay = 0;
 
+const mavMarkers = new Map();
+const bkkMarkers = new Map();
+let lastMavFetchTime = performance.now();
+let lastBkkFetchTime = performance.now();
+
 const activeVehicleModes = {
   SUBWAY: true,
   TRAM: true,
@@ -148,6 +153,60 @@ async function checkServerStatus() {
   }
 }
 
+function calcGeoBearing(lat1, lon1, lat2, lon2) {
+  const p1 = lat1 * Math.PI / 180;
+  const p2 = lat2 * Math.PI / 180;
+  const dl = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function getVehicleIcon(v, zoom) {
+  const isDotMode = zoom <= 12;
+  let name = String(v.routeShortName || '').trim();
+  if (name.length > 8) name = name.slice(0, 8);
+  if (!name) name = v.licensePlate || '•';
+
+  if (isDotMode) {
+    const dotSize = zoom <= 9 ? 6 : (zoom === 10 ? 7 : (zoom === 11 ? 9 : 11));
+    return L.divIcon({
+      className: 'vehicle-div-icon',
+      html: `<div class="v-dot" style="width:${dotSize}px;height:${dotSize}px;background:${v.color || '#009EE3'};"></div>`,
+      iconSize: [dotSize, dotSize],
+      iconAnchor: [dotSize / 2, dotSize / 2]
+    });
+  } else {
+    const height = zoom === 13 ? 20 : (zoom === 14 ? 24 : 28);
+    const fontSize = zoom === 13 ? 9.5 : (zoom === 14 ? 11 : 12);
+    const charW = zoom === 13 ? 6 : (zoom === 14 ? 7.2 : 8);
+    const minW = zoom === 13 ? 22 : (zoom === 14 ? 26 : 30);
+    const isLong = name.length > 3;
+    const width = isLong ? Math.max(minW + 4, Math.round(name.length * charW + 10)) : minW;
+
+    return L.divIcon({
+      className: 'vehicle-div-icon',
+      html: `<div class="v-marker" style="min-width:${width}px;height:${height}px;font-size:${fontSize}px;background:${v.color || '#009EE3'};color:${v.textColor || '#FFFFFF'};">${name}</div>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2]
+    });
+  }
+}
+
+function getVehiclePopupHtml(v, speed) {
+  const sp = speed !== undefined ? speed : (v.speedKmh || 0);
+  const speedText = sp > 0 ? `${sp} km/h` : 'Áll / Nincs adat';
+  return `
+    <div style="font-size:13px;line-height:1.5;">
+      <strong>${v.routeShortName || 'Járat'} → ${v.headsign || 'N/A'}</strong><br>
+      Rendszám: <b>${v.licensePlate || 'N/A'}</b><br>
+      Sebesség: <b>${speedText}</b><br>
+      Típus: ${v.model || v.routeType || 'N/A'}<br>
+      <button class="btn btn-secondary" style="margin-top:8px;width:100%;font-size:11px;" onclick="loadAndDrawRoute('${v.routeId || v.routeShortName}')">🛤️ Nyomvonal kirajzolása</button>
+    </div>
+  `;
+}
+
 async function fetchVehicles() {
   const bounds = map.getBounds();
   const center = bounds.getCenter();
@@ -165,7 +224,7 @@ async function fetchVehicles() {
     }
     const data = await res.json();
     vehicles = data.vehicles || [];
-    renderVehicles();
+    syncBkkMarkers(vehicles);
     document.getElementById('lastUpdated').textContent =
       'Frissítve: ' + new Date().toLocaleTimeString();
   } catch (err) {
@@ -173,73 +232,118 @@ async function fetchVehicles() {
   }
 }
 
+function syncBkkMarkers(vehiclesList) {
+  const now = performance.now();
+  const dt = Math.min(20000, Math.max(4000, now - lastBkkFetchTime));
+  lastBkkFetchTime = now;
+
+  const activeIds = new Set();
+  const zoom = map.getZoom();
+
+  vehiclesList.forEach(v => {
+    if (!v.lat || !v.lon) return;
+    const vId = v.vehicleId;
+    activeIds.add(vId);
+
+    const existing = bkkMarkers.get(vId);
+    if (existing) {
+      const curPos = existing.marker.getLatLng();
+      existing.fromLat = curPos.lat;
+      existing.fromLon = curPos.lng;
+      existing.targetLat = v.lat;
+      existing.targetLon = v.lon;
+      existing.startTime = now;
+      existing.duration = dt;
+      existing.data = v;
+
+      if (v.speedKmh !== undefined && v.speedKmh !== null && v.speedKmh > 0) {
+        existing.speedKmh = v.speedKmh;
+      } else {
+        const d = calcDistanceMeters(existing.fromLat, existing.fromLon, v.lat, v.lon);
+        existing.speedKmh = Math.round((d / (dt / 1000)) * 3.6);
+      }
+
+      if (v.bearing !== undefined && v.bearing !== null) {
+        existing.bearing = v.bearing;
+      } else {
+        const d = calcDistanceMeters(existing.fromLat, existing.fromLon, v.lat, v.lon);
+        if (d > 5) {
+          existing.bearing = calcGeoBearing(existing.fromLat, existing.fromLon, v.lat, v.lon);
+        }
+      }
+
+      existing.marker.setPopupContent(getVehiclePopupHtml(v, existing.speedKmh));
+      existing.marker.setIcon(getVehicleIcon(v, zoom));
+    } else {
+      const icon = getVehicleIcon(v, zoom);
+      const marker = L.marker([v.lat, v.lon], { icon, zIndexOffset: 1000 });
+      marker.bindPopup(getVehiclePopupHtml(v, v.speedKmh || 0));
+
+      const entry = {
+        marker,
+        fromLat: v.lat,
+        fromLon: v.lon,
+        targetLat: v.lat,
+        targetLon: v.lon,
+        startTime: now,
+        duration: dt,
+        speedKmh: v.speedKmh || 0,
+        bearing: v.bearing || null,
+        data: v
+      };
+
+      vehicleLayer.addLayer(marker);
+      bkkMarkers.set(vId, entry);
+    }
+  });
+
+  bkkMarkers.forEach((entry, id) => {
+    if (!activeIds.has(id)) {
+      vehicleLayer.removeLayer(entry.marker);
+      bkkMarkers.delete(id);
+    }
+  });
+
+  renderVehicles();
+}
+
 function renderVehicles() {
-  vehicleLayer.clearLayers();
   const filterInput = document.getElementById('routeFilter');
   const q = filterInput ? filterInput.value.trim().toLowerCase() : '';
   const zoom = map.getZoom();
   const isDotMode = zoom <= 12;
 
-  vehicles.forEach(v => {
+  bkkMarkers.forEach((entry) => {
     try {
-      if (!v.lat || !v.lon) return;
+      const v = entry.data;
+      if (!v) return;
 
       const mode = normalizeMode(v.routeType, v.routeShortName);
-      if (!activeVehicleModes[mode]) return;
+      const isModeActive = Boolean(activeVehicleModes[mode]);
 
       const shortName = String(v.routeShortName || '').toLowerCase();
       const headsign = String(v.headsign || '').toLowerCase();
-      if (q && !shortName.includes(q) && !headsign.includes(q)) return;
+      const matchesFilter = !q || shortName.includes(q) || headsign.includes(q);
 
-      let name = String(v.routeShortName || '').trim();
-      if (name.length > 8) {
-        name = name.slice(0, 8);
-      }
-      if (!name) {
-        name = v.licensePlate || '•';
-      }
+      const shouldShow = isModeActive && matchesFilter;
 
-      let icon;
-      if (isDotMode) {
-        const dotSize = zoom <= 9 ? 6 : (zoom === 10 ? 7 : (zoom === 11 ? 9 : 11));
-        icon = L.divIcon({
-          className: 'vehicle-div-icon',
-          html: `<div class="v-dot" style="width:${dotSize}px;height:${dotSize}px;background:${v.color || '#009EE3'};"></div>`,
-          iconSize: [dotSize, dotSize],
-          iconAnchor: [dotSize / 2, dotSize / 2]
-        });
+      if (shouldShow) {
+        entry.marker.setIcon(getVehicleIcon(v, zoom));
+        if (isDotMode) {
+          entry.marker.bindTooltip(`<b>${v.routeShortName || 'Járat'}</b> → ${v.headsign || ''}`, { direction: 'top' });
+        } else {
+          entry.marker.unbindTooltip();
+        }
+        if (!vehicleLayer.hasLayer(entry.marker)) {
+          vehicleLayer.addLayer(entry.marker);
+        }
       } else {
-        const height = zoom === 13 ? 20 : (zoom === 14 ? 24 : 28);
-        const fontSize = zoom === 13 ? 9.5 : (zoom === 14 ? 11 : 12);
-        const charW = zoom === 13 ? 6 : (zoom === 14 ? 7.2 : 8);
-        const minW = zoom === 13 ? 22 : (zoom === 14 ? 26 : 30);
-        const isLong = name.length > 3;
-        const width = isLong ? Math.max(minW + 4, Math.round(name.length * charW + 10)) : minW;
-
-        icon = L.divIcon({
-          className: 'vehicle-div-icon',
-          html: `<div class="v-marker" style="min-width:${width}px;height:${height}px;font-size:${fontSize}px;background:${v.color || '#009EE3'};color:${v.textColor || '#FFFFFF'};">${name}</div>`,
-          iconSize: [width, height],
-          iconAnchor: [width / 2, height / 2]
-        });
+        if (vehicleLayer.hasLayer(entry.marker)) {
+          vehicleLayer.removeLayer(entry.marker);
+        }
       }
-
-      const m = L.marker([v.lat, v.lon], { icon, zIndexOffset: 1000 });
-      if (isDotMode) {
-        m.bindTooltip(`<b>${v.routeShortName || 'Járat'}</b> → ${v.headsign || ''}`, { direction: 'top' });
-      }
-      m.bindPopup(`
-        <div style="font-size:13px;line-height:1.5;">
-          <strong>${v.routeShortName || 'Járat'} → ${v.headsign || 'N/A'}</strong><br>
-          Rendszám: <b>${v.licensePlate || 'N/A'}</b><br>
-          Sebesség: ${v.speedKmh || 0} km/h<br>
-          Típus: ${v.model || v.routeType || 'N/A'}<br>
-          <button class="btn btn-secondary" style="margin-top:8px;width:100%;font-size:11px;" onclick="loadAndDrawRoute('${v.routeId || v.routeShortName}')">🛤️ Nyomvonal kirajzolása</button>
-        </div>
-      `);
-      vehicleLayer.addLayer(m);
     } catch (err) {
-      console.error('Error rendering vehicle:', err, v);
+      console.error('Error rendering vehicle:', err);
     }
   });
 
@@ -780,6 +884,64 @@ async function loadAndDrawRoute(routeId) {
 }
 window.loadAndDrawRoute = loadAndDrawRoute;
 
+function getMavIcon(t, zoom) {
+  const isDotMode = zoom <= 11;
+  const displayName = t.trainName || t.relation || t.trainNumber || 'Vonat';
+  const delayBadgeText = t.delay <= 0 ? '0p' : `+${t.delay}p`;
+
+  if (isDotMode) {
+    const dotSize = zoom <= 8 ? 7 : (zoom <= 10 ? 9 : 11);
+    return L.divIcon({
+      className: 'mav-div-icon',
+      html: `<div class="mav-dot" style="width:${dotSize}px;height:${dotSize}px;background:${t.color};"></div>`,
+      iconSize: [dotSize, dotSize],
+      iconAnchor: [dotSize / 2, dotSize / 2]
+    });
+  } else {
+    const fontSize = zoom === 12 ? 9.5 : (zoom === 13 ? 10.5 : 11.5);
+    const pad = zoom === 12 ? '1px 5px' : '2px 6px 2px 5px';
+    return L.divIcon({
+      className: 'mav-div-icon',
+      html: `
+        <div class="mav-marker" style="font-size:${fontSize}px;padding:${pad};" title="${displayName} (#${t.trainNumber}) - ${t.relation} (${t.statusText})">
+          <span class="mav-icon-tag">🚆</span>
+          <span class="mav-name-tag" style="font-size:${fontSize}px;">${displayName}</span>
+          <span class="mav-delay-pill" style="background:${t.color};color:${t.textColor};">${delayBadgeText}</span>
+        </div>
+      `,
+      iconAnchor: [40, 14]
+    });
+  }
+}
+
+function getMavPopupHtml(t, speed) {
+  const displayName = t.trainName || t.relation || t.trainNumber || 'Vonat';
+  const safeTitle = encodeURIComponent(displayName);
+  const safeRel = encodeURIComponent(t.relation || '');
+  const sp = speed !== undefined ? speed : (t.speedKmh || 0);
+  const speedText = sp > 0 ? `${sp} km/h` : 'Áll / Állomáson tartózkodik';
+
+  return `
+    <div style="font-size:13px;line-height:1.5;min-width:240px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+        <strong style="font-size:15px;color:#38bdf8;">🚆 ${displayName}</strong>
+        <span class="mav-delay-pill" style="background:${t.color};color:${t.textColor};font-weight:bold;padding:2px 6px;">${t.statusText}</span>
+      </div>
+      <div style="color:#f8fafc;font-size:12px;margin-bottom:4px;">
+        <strong>${t.relation}</strong>
+      </div>
+      <div style="color:#94a3b8;font-size:11px;margin-bottom:10px;">
+        Vonatszám: <b>${t.trainNumber}</b> • Üzemeltető: <b>${t.menetvonal}</b><br>
+        Sebesség: <b style="color:#38bdf8;">${speedText}</b>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" style="flex:1;font-size:11px;padding:6px 8px;" onclick="loadMavTrainDetails('${t.elviraId}', '${t.trainNumber}', '${safeRel}', false, '${safeTitle}')">📋 Menetrend</button>
+        <button class="btn btn-secondary" style="font-size:11px;padding:6px 8px;" onclick="loadAndDrawMavRoute('${t.elviraId}', '${safeTitle}')">🛤️ Nyomvonal</button>
+      </div>
+    </div>
+  `;
+}
+
 // MÁV Vonatok Lekérése és Megjelenítése
 async function fetchMavTrains() {
   if (!activeVehicleModes.MAV) {
@@ -796,101 +958,180 @@ async function fetchMavTrains() {
     const data = await res.json();
     mavTrains = data.trains || [];
     mavAvgDelay = data.avgDelay || 0;
-    renderMavTrains();
+    syncMavMarkers(mavTrains);
   } catch (err) {
     console.error('fetchMavTrains failed:', err);
   }
 }
 
-function renderMavTrains() {
-  mavTrainLayer.clearLayers();
-  if (!activeVehicleModes.MAV) {
-    updateVehicleStatsCounter();
-    return;
-  }
+function syncMavMarkers(trainList) {
+  const now = performance.now();
+  const dt = Math.min(20000, Math.max(4000, now - lastMavFetchTime));
+  lastMavFetchTime = now;
 
+  const activeIds = new Set();
+  const zoom = map.getZoom();
+
+  trainList.forEach(t => {
+    if (!t.lat || !t.lon) return;
+    const tId = t.elviraId || t.trainNumber;
+    activeIds.add(tId);
+
+    const existing = mavMarkers.get(tId);
+    if (existing) {
+      const curPos = existing.marker.getLatLng();
+      existing.fromLat = curPos.lat;
+      existing.fromLon = curPos.lng;
+      existing.targetLat = t.lat;
+      existing.targetLon = t.lon;
+      existing.startTime = now;
+      existing.duration = dt;
+      existing.data = t;
+
+      if (t.speedKmh !== undefined && t.speedKmh !== null && t.speedKmh > 0) {
+        existing.speedKmh = t.speedKmh;
+      } else {
+        const d = calcDistanceMeters(existing.fromLat, existing.fromLon, t.lat, t.lon);
+        existing.speedKmh = Math.round((d / (dt / 1000)) * 3.6);
+      }
+
+      if (t.bearing !== undefined && t.bearing !== null) {
+        existing.bearing = t.bearing;
+      } else {
+        const d = calcDistanceMeters(existing.fromLat, existing.fromLon, t.lat, t.lon);
+        if (d > 5) {
+          existing.bearing = calcGeoBearing(existing.fromLat, existing.fromLon, t.lat, t.lon);
+        }
+      }
+
+      existing.marker.setPopupContent(getMavPopupHtml(t, existing.speedKmh));
+      existing.marker.setIcon(getMavIcon(t, zoom));
+    } else {
+      const icon = getMavIcon(t, zoom);
+      const marker = L.marker([t.lat, t.lon], { icon, zIndexOffset: 950 });
+      marker.bindPopup(getMavPopupHtml(t, t.speedKmh || 0));
+
+      const entry = {
+        marker,
+        fromLat: t.lat,
+        fromLon: t.lon,
+        targetLat: t.lat,
+        targetLon: t.lon,
+        startTime: now,
+        duration: dt,
+        speedKmh: t.speedKmh || 0,
+        bearing: t.bearing || null,
+        data: t
+      };
+
+      mavTrainLayer.addLayer(marker);
+      mavMarkers.set(tId, entry);
+    }
+  });
+
+  mavMarkers.forEach((entry, id) => {
+    if (!activeIds.has(id)) {
+      mavTrainLayer.removeLayer(entry.marker);
+      mavMarkers.delete(id);
+    }
+  });
+
+  renderMavTrains();
+}
+
+function renderMavTrains() {
   const filterInput = document.getElementById('routeFilter');
   const q = filterInput ? filterInput.value.trim().toLowerCase() : '';
   const zoom = map.getZoom();
   const isDotMode = zoom <= 11;
+  const isMavActive = Boolean(activeVehicleModes.MAV);
 
-  mavTrains.forEach(t => {
+  mavMarkers.forEach((entry) => {
     try {
-      if (!t.lat || !t.lon) return;
+      const t = entry.data;
+      if (!t) return;
 
       const trainName = String(t.trainName || '').toLowerCase();
       const trainNum = String(t.trainNumber || '').toLowerCase();
       const fullTitle = String(t.fullTitle || '').toLowerCase();
       const rel = String(t.relation || '').toLowerCase();
 
-      if (q && !trainName.includes(q) && !trainNum.includes(q) && !fullTitle.includes(q) && !rel.includes(q)) {
-        return;
-      }
+      const matchesFilter = !q || trainName.includes(q) || trainNum.includes(q) || fullTitle.includes(q) || rel.includes(q);
+      const shouldShow = isMavActive && matchesFilter;
 
-      const displayName = t.trainName || t.relation || t.trainNumber || 'Vonat';
-      const delayBadgeText = t.delay <= 0 ? '0p' : `+${t.delay}p`;
-
-      let icon;
-      if (isDotMode) {
-        const dotSize = zoom <= 8 ? 7 : (zoom <= 10 ? 9 : 11);
-        icon = L.divIcon({
-          className: 'mav-div-icon',
-          html: `<div class="mav-dot" style="width:${dotSize}px;height:${dotSize}px;background:${t.color};"></div>`,
-          iconSize: [dotSize, dotSize],
-          iconAnchor: [dotSize / 2, dotSize / 2]
-        });
+      if (shouldShow) {
+        entry.marker.setIcon(getMavIcon(t, zoom));
+        const displayName = t.trainName || t.relation || t.trainNumber || 'Vonat';
+        if (isDotMode) {
+          entry.marker.bindTooltip(`🚆 <b>${displayName}</b> <span style="color:#94a3b8;">(#${t.trainNumber})</span> • ${t.statusText}<br><span style="font-size:11px;color:#cbd5e1;">${t.relation}</span>`, { direction: 'top' });
+        } else {
+          entry.marker.unbindTooltip();
+        }
+        if (!mavTrainLayer.hasLayer(entry.marker)) {
+          mavTrainLayer.addLayer(entry.marker);
+        }
       } else {
-        const fontSize = zoom === 12 ? 9.5 : (zoom === 13 ? 10.5 : 11.5);
-        const pad = zoom === 12 ? '1px 5px' : '2px 6px 2px 5px';
-        icon = L.divIcon({
-          className: 'mav-div-icon',
-          html: `
-            <div class="mav-marker" style="font-size:${fontSize}px;padding:${pad};" title="${displayName} (#${t.trainNumber}) - ${t.relation} (${t.statusText})">
-              <span class="mav-icon-tag">🚆</span>
-              <span class="mav-name-tag" style="font-size:${fontSize}px;">${displayName}</span>
-              <span class="mav-delay-pill" style="background:${t.color};color:${t.textColor};">${delayBadgeText}</span>
-            </div>
-          `,
-          iconAnchor: [40, 14]
-        });
+        if (mavTrainLayer.hasLayer(entry.marker)) {
+          mavTrainLayer.removeLayer(entry.marker);
+        }
       }
-
-      const m = L.marker([t.lat, t.lon], { icon, zIndexOffset: 950 });
-
-      if (isDotMode) {
-        m.bindTooltip(`🚆 <b>${displayName}</b> <span style="color:#94a3b8;">(#${t.trainNumber})</span> • ${t.statusText}<br><span style="font-size:11px;color:#cbd5e1;">${t.relation}</span>`, { direction: 'top' });
-      }
-
-      const safeTitle = encodeURIComponent(displayName);
-      const safeRel = encodeURIComponent(t.relation || '');
-
-      m.bindPopup(`
-        <div style="font-size:13px;line-height:1.5;min-width:240px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
-            <strong style="font-size:15px;color:#38bdf8;">🚆 ${displayName}</strong>
-            <span class="mav-delay-pill" style="background:${t.color};color:${t.textColor};font-weight:bold;padding:2px 6px;">${t.statusText}</span>
-          </div>
-          <div style="color:#f8fafc;font-size:12px;margin-bottom:4px;">
-            <strong>${t.relation}</strong>
-          </div>
-          <div style="color:#94a3b8;font-size:11px;margin-bottom:10px;">
-            Vonatszám: <b>${t.trainNumber}</b> • Üzemeltető: <b>${t.menetvonal}</b>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-primary" style="flex:1;font-size:11px;padding:6px 8px;" onclick="loadMavTrainDetails('${t.elviraId}', '${t.trainNumber}', '${safeRel}', false, '${safeTitle}')">📋 Menetrend</button>
-            <button class="btn btn-secondary" style="font-size:11px;padding:6px 8px;" onclick="loadAndDrawMavRoute('${t.elviraId}', '${safeTitle}')">🛤️ Nyomvonal</button>
-          </div>
-        </div>
-      `);
-
-      mavTrainLayer.addLayer(m);
     } catch (err) {
-      console.error('Error rendering mav train:', err, t);
+      console.error('Error rendering mav train:', err);
     }
   });
 
   updateVehicleStatsCounter();
 }
+
+// Folyamatos mozgás animációs motor (Dead-Reckoning & Interpolation)
+function updateMotionEntry(entry, now) {
+  if (!entry || !entry.marker) return;
+
+  const elapsed = now - entry.startTime;
+  const duration = entry.duration || 10000;
+
+  if (elapsed <= duration) {
+    // 1. Sima interpoláció a két ismert GPS koordináta között
+    const t = Math.min(1, Math.max(0, elapsed / duration));
+    const curLat = entry.fromLat + (entry.targetLat - entry.fromLat) * t;
+    const curLon = entry.fromLon + (entry.targetLon - entry.fromLon) * t;
+    entry.marker.setLatLng([curLat, curLon]);
+  } else {
+    // 2. Dead-reckoning extrapoláció: ha kimarad/késik a GPS, a sebesség mentén tovább mozog
+    const speed = entry.speedKmh || 0;
+    if (speed <= 0 || entry.bearing === null || entry.bearing === undefined) {
+      entry.marker.setLatLng([entry.targetLat, entry.targetLon]);
+      return;
+    }
+
+    const extraSeconds = (elapsed - duration) / 1000;
+    if (extraSeconds > 60) return; // 60s GPS csend után megállítjuk
+
+    let extraDistMeters = 0;
+    if (extraSeconds <= 20) {
+      extraDistMeters = (speed / 3.6) * extraSeconds;
+    } else {
+      const fullDist = (speed / 3.6) * 20;
+      const decelTime = Math.min(40, extraSeconds - 20);
+      const decelDist = (speed / 3.6) * (decelTime - (decelTime * decelTime) / 80);
+      extraDistMeters = fullDist + decelDist;
+    }
+
+    const rad = (entry.bearing * Math.PI) / 180;
+    const dLat = (extraDistMeters * Math.cos(rad)) / 111111;
+    const dLon = (extraDistMeters * Math.sin(rad)) / (111111 * Math.cos((entry.targetLat * Math.PI) / 180));
+
+    entry.marker.setLatLng([entry.targetLat + dLat, entry.targetLon + dLon]);
+  }
+}
+
+function animateAllVehicles() {
+  const now = performance.now();
+  mavMarkers.forEach(entry => updateMotionEntry(entry, now));
+  bkkMarkers.forEach(entry => updateMotionEntry(entry, now));
+  requestAnimationFrame(animateAllVehicles);
+}
+requestAnimationFrame(animateAllVehicles);
 
 // MÁV Vonat Menetrend betöltése az egységesített FUTÁR & MÁV Widgetbe
 async function loadMavTrainDetails(elviraId, trainNumber, encodedRelation = '', silent = false, encodedTrainName = '') {

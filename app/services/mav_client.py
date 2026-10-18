@@ -1,6 +1,7 @@
 import time
 import json
 import re
+import math
 from typing import Dict, Any, List, Optional
 import httpx
 from app.services.futar_client import decode_polyline, SimpleTTLCache
@@ -10,6 +11,36 @@ mav_names_cache = SimpleTTLCache(ttl_seconds=45)
 mav_train_details_cache = SimpleTTLCache(ttl_seconds=30)
 mav_lines_cache = SimpleTTLCache(ttl_seconds=300)
 mav_station_cache = SimpleTTLCache(ttl_seconds=45)
+
+# Memóriabeli vonat tracker sebesség és haladási irány számításához
+_mav_train_tracking: Dict[str, Any] = {}
+
+def calculate_geo_motion(lat1: float, lon1: float, lat2: float, lon2: float, dt_seconds: float):
+    """Kiszámítja a sebességet (km/h) és az irányszöget (bearing fokban) két koordináta és eltelt idő alapján."""
+    if dt_seconds <= 0:
+        return 0, None
+    R = 6371000.0  # Föld sugara méterben
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * (math.sin(dlambda / 2.0) ** 2)
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a)))
+    dist_m = R * c
+
+    if dist_m < 15.0:
+        return 0, None
+
+    speed_kmh = (dist_m / dt_seconds) * 3.6
+    if speed_kmh > 180.0:
+        speed_kmh = 160.0
+
+    y = math.sin(dlambda) * math.cos(phi2)
+    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlambda)
+    bearing = (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+    return round(speed_kmh), round(bearing, 1)
 
 VONATINFO_URL = "https://vonatinfo.mav.hu/map.aspx/getData"
 MAVPLUSZ_GRAPHQL_URL = "https://mavplusz.hu/otp2-backend/otp/routers/default/index/graphql"
@@ -264,10 +295,34 @@ async def fetch_mav_trains() -> Dict[str, Any]:
                 cat = "major"
                 color = "#ef4444"  # Piros - jelentős késés (10+ perc)
                 text_color = "#FFFFFF"
-                status_desc = f"+{delay} perc"
-
             is_ic = any(k in full_title or k in train_name for k in ("IC", "InterCity", "EC", "EuroCity", "RJ", "Railjet"))
             is_suburban = any(train_name.startswith(p) for p in ("S", "Z", "G", "H"))
+
+            now_ts = time.time()
+            train_key = elvira_id or train_num
+            speed_kmh = 0
+            bearing = None
+
+            prev = _mav_train_tracking.get(train_key)
+            if prev:
+                prev_lat, prev_lon, prev_ts, prev_speed, prev_bearing = prev
+                dt = now_ts - prev_ts
+                if 2.0 <= dt <= 180.0:
+                    calc_speed, calc_bearing = calculate_geo_motion(prev_lat, prev_lon, lat, lon, dt)
+                    if calc_bearing is not None:
+                        speed_kmh = calc_speed
+                        bearing = calc_bearing
+                    elif calc_speed == 0:
+                        speed_kmh = 0
+                        bearing = prev_bearing
+                    else:
+                        speed_kmh = prev_speed
+                        bearing = prev_bearing
+                else:
+                    speed_kmh = prev_speed
+                    bearing = prev_bearing
+
+            _mav_train_tracking[train_key] = (lat, lon, now_ts, speed_kmh, bearing)
 
             trains.append({
                 "trainNumber": short_num,
@@ -278,6 +333,8 @@ async def fetch_mav_trains() -> Dict[str, Any]:
                 "delay": delay,
                 "lat": lat,
                 "lon": lon,
+                "speedKmh": speed_kmh,
+                "bearing": bearing,
                 "elviraId": elvira_id,
                 "menetvonal": menetvonal,
                 "category": cat,
