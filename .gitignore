@@ -20,3 +20,8 @@ Cargo.lock
 .idea/
 .DS_Store
 *.swp
+
+# Node & Tauri frontend build artifacts
+node_modules/
+dist/
+gen/

@@ -1,45 +1,61 @@
-# 🚋 BKK Live Tracker & DIY API Hub (Rust Edition)
+# 🚋 BKK & MÁV Live Tracker (Tauri v2 + TypeScript + Rust)
 
-Könnyűsúlyú, szupergyors **Rust (Axum + Tokio)** alapú élő BKK térkép, megállóhelyi FUTÁR kijelző és API központ saját felhasználásra, Android widgetekhez (KWGT) és DIY (ESP32 / Home Assistant) projektekhez.
+Natív, szupergyors **Tauri v2 + Rust + TypeScript** alapú élő BKK és MÁV/GYSEV térkép, megállóhelyi FUTÁR kijelző, vagonWEB szerelvény-összeállítás megjelenítő és DIY API központ **Windows Desktop** és **Android** platformokra.
 
-## ✨ Főbb funkciók & Rust Optimalizációk
-- **Nagy Teljesítmény & Alacsony Memóriahasználat:** Pár megabájtos memórialábnyom a korábbi Python backendhez képest.
-- **Request Coalescing Cache:** A `moka` gyorsítótár egyidejű lekérések esetén összevonja a hívásokat, megvédve a BKK/MÁV API kvótát.
-- **Párhuzamosított hálózati lekérések:** A budapesti törzshálózat és a MÁV adatok szinkron/szekvenciális lekérés helyett korlátozott párhuzamossággal töltődnek be.
-- **GTFS-Realtime (Protobuf) integráció:** Bináris `.pb` feed dekódolás közvetlenül Rust `prost` struktúrákkal.
-- **Beágyazott statikus frontend:** `rust-embed` segítségével a HTML/CSS/JS frontend egyetlen önálló binárisba fordul be.
-- **Élő Járműtérkép:** BKK és MÁV/GYSEV járatok valós idejű követése hivatalos színkódokkal és sebességszámítással.
-- **vagonWEB integráció:** Tervezett és tényleges szerelvényösszeállítások.
+## ✨ Architektúra & Főbb Funkciók
+- **Natív Alkalmazás (Tauri v2):** Nem böngészőben fut, hanem önálló natív alkalmazásként indul saját ablakban (Windows WebView2 / Android WebView), közvetlen **Tauri IPC (`#[tauri::command]` ↔ `invoke`)** kommunikációval.
+- **TypeScript + Vite Frontend (`src-ui/`):** Szigorúan típusos (`src-ui/types.ts`) moduláris kód:
+  - `src-ui/api.ts`: Tauri v2 IPC kliens (`@tauri-apps/api/core`) automatikus HTTP visszalépéssel.
+  - `src-ui/hull.ts`: Konvex burok és lekerekített poligon generátor a BKK csomópontokhoz.
+  - `src-ui/vagonweb.ts`: Tervezett és valós vagonWEB szerelvény-összeállítás megjelenítő.
+  - `src-ui/main.ts`: 60 FPS-es dead-reckoning jármű/vonat animáció, kereső, FUTÁR kijelző és MÁV menetrendek.
+- **Rust Backend (`src/`):**
+  - `src/lib.rs`: Tauri v2 mobil- és asztali belépési pont (`#[cfg_attr(mobile, tauri::mobile_entry_point)]`), 13 natív IPC parancs, valamint asztali gépen háttérben futó Axum HTTP API szerver (`127.0.0.1:8000`) a KWGT/ESP32 widgetekhez.
+  - `moka` aszinkron TTL gyorsítótár **Request Coalescing** támogatással és `RawValue` nulla-másolásos JSON továbbítással.
 
 ---
 
-## 🚀 Gyorsindítás
+## 🚀 Indítás (Windows Desktop)
 
-### Rust futtatás:
-```bash
+### 1. Gyorsindítás
+Kattints duplán a **`run.bat`** fájlra, vagy futtasd:
+```powershell
+npm.cmd run build
 cargo run --release
 ```
-Vagy kattints kétszer a `run.bat` fájlra Windows alatt.
 
-Nyisd meg a böngésződben: **http://localhost:8000**
+### 2. Fejlesztői mód (Hot-Reload)
+```powershell
+npm.cmd run tauri dev
+```
 
----
-
-## 📱 Végpontok Android Widgethez / DIY projektekhez
-
-Ha a szervert futtatod (pl. otthoni Raspberry Pi-n, NAS-on vagy ingyenes felhőben), az alábbi egyszerűsített végpontokat hívhatod:
-
-- **`GET /api/departures/{stop_id}?limit=6`**
-  - Példa: `/api/departures/BKK_F01046`
-  - Visszaadja a megálló nevét és a következő indulásokat kiszámolt hátralévő percekkel (`minutesUntil`), járatszámmal és színkóddal.
-- **`GET /api/vehicles?lat=47.4979&lon=19.0402&lat_span=0.03&lon_span=0.04`**
-  - Visszaadja az adott területen mozgó összes járművet.
-- **`GET /api/stops?lat=47.4979&lon=19.0402&lat_span=0.015&lon_span=0.02`**
-  - Visszaadja a környékbeli megállókat és azok `stopId` azonosítóit.
-- **`GET /api/gtfs-rt/vehicles`**
-  - A teljes budapesti GTFS-Realtime Protobuf (`VehiclePositions.pb`) feedet dekódolja JSON formátumba.
+### 3. Telepítő (.exe / .msi) készítése Windowsra
+```powershell
+npm.cmd run tauri build
+```
 
 ---
 
-## 📄 Licenc és Adatforrás
-Adatforrás: **BKK Zrt., CC BY 4.0**
+## 📱 Android Portolás (Tauri v2 Mobile)
+
+A projekt felépítése (`src/lib.rs` `#[cfg_attr(mobile, tauri::mobile_entry_point)]`, `crate-type = ["staticlib", "cdylib", "rlib"]` és a Tauri IPC alapú `src-ui/api.ts`) készen áll az Androidos fordításra. Amikor telepítve van az Android SDK / NDK:
+
+```powershell
+# 1. Android projekt inicializálása (egyszer kell futtatni)
+npm.cmd run tauri android init
+
+# 2. Futtatás Android emulátoron vagy csatlakoztatott telefonon
+npm.cmd run tauri android dev
+
+# 3. APK / AAB csomag fordítása
+npm.cmd run tauri android build
+```
+
+---
+
+## 🔌 DIY Widget Végpontok (KWGT / ESP32)
+Asztali gépen a Tauri alkalmazás a háttérben (ha a 8000-es port szabad) automatikusan elindítja a helyi HTTP REST API-t is:
+- `GET http://127.0.0.1:8000/api/departures/{stop_id}?limit=6`
+- `GET http://127.0.0.1:8000/api/vehicles?lat=47.4979&lon=19.0402`
+- `GET http://127.0.0.1:8000/api/mav/trains`
+- `GET http://127.0.0.1:8000/api/gtfs-rt/vehicles`

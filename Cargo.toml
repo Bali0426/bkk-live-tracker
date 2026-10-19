@@ -2,16 +2,24 @@
 name = "bkk-live-tracker"
 version = "2.0.0"
 edition = "2021"
-description = "BKK Live Tracker & DIY API – élő BKK/MÁV térkép és widget API (Rust)"
+description = "BKK & MÁV Live Tracker – Natív Tauri v2 + TypeScript alkalmazás (Windows & Android) és DIY API"
 license = "MIT"
 publish = false
 
+[lib]
+name = "bkk_live_tracker_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
 [dependencies]
+tauri = { version = "2", features = [] }
 axum = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip", "http2"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
 moka = { version = "0.12", features = ["future"] }
 prost = "0.13"
 regex = "1"
@@ -25,7 +33,11 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [profile.release]
 opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
+codegen-units = 16
 strip = true
+
+[profile.release.package.webview2-com]
+opt-level = 1
+
+[profile.release.package.webview2-com-sys]
+opt-level = 1

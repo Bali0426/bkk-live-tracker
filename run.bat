@@ -1,13 +1,12 @@
 @echo off
-echo Starting BKK Live Tracker (Rust)...
-where cargo >nul 2>nul
-if %ERRORLEVEL% equ 0 (
-    cargo run --release
-) else if exist "%USERPROFILE%\.cargo\bin\cargo.exe" (
-    "%USERPROFILE%\.cargo\bin\cargo.exe" run --release
-) else if exist "venv\Scripts\python.exe" (
-    venv\Scripts\python.exe run.py
-) else (
-    py -3 run.py
+chcp 65001 >nul
+echo Starting BKK & MAV Live Tracker (Native Tauri v2 Desktop App)...
+
+set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+
+if not exist "target\release\bkk-live-tracker.exe" (
+    echo Building native Tauri v2 desktop application...
+    call npm.cmd run tauri -- build --no-bundle
 )
-pause
+
+start "" "target\release\bkk-live-tracker.exe"

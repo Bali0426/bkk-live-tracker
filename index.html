@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>BKK & MÁV Live Tracker</title>
+
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+    <!-- Application Styles -->
+    <link rel="stylesheet" href="/src-ui/style.css" />
+</head>
+<body>
+    <!-- Top Bar -->
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-badge">BKK</span>
+            <h1>Live Tracker</h1>
+            <span id="status-dot" class="status-dot" title="Kapcsolódás..."></span>
+        </div>
+
+        <div class="controls">
+            <div class="search-group" style="position: relative;">
+                <input type="text" id="station-search-input" placeholder="Megálló / Állomás keresése..." autocomplete="off" />
+                <div id="search-results-dropdown" class="search-dropdown hidden"></div>
+            </div>
+
+            <div class="filter-group">
+                <input type="text" id="route-filter" placeholder="Járat szűrő (pl. 4, 6, M2, 7E)" autocomplete="off" />
+                <button id="clear-filter-btn" class="btn-icon" title="Szűrő törlése">✕</button>
+            </div>
+
+            <button id="toggle-mav-btn" class="btn-secondary active" title="MÁV / GYSEV vonatok megjelenítése (Országos)">
+                🚆 MÁV Vonatok
+            </button>
+
+            <button id="toggle-stops-btn" class="btn-secondary" title="Megállók megjelenítése a térképen">
+                🚏 Megállók
+            </button>
+
+            <button id="toggle-network-btn" class="btn-secondary" title="Kötöttpályás vonalhálózat megjelenítése">
+                🕸️ Hálózat
+            </button>
+
+            <button id="refresh-btn" class="btn-primary" title="Azonnali frissítés">
+                🔄 Frissítés
+            </button>
+
+            <button id="theme-toggle-btn" class="btn-icon" title="Világos / Sötét térkép váltása">
+                ☀️
+            </button>
+
+            <button id="settings-btn" class="btn-icon" title="API Kulcs & Widget Beállítások">
+                ⚙️
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="main-layout">
+        <!-- Map Container -->
+        <div id="map-container">
+            <div id="map"></div>
+
+            <!-- Floating stats badge -->
+            <div class="map-overlay-stats">
+                <div>Járművek a térképen: <strong id="vehicle-count">0</strong></div>
+                <div class="sub-stat">Frissítve: <span id="last-updated">--:--:--</span></div>
+            </div>
+
+            <!-- Vehicle type legend -->
+            <div class="map-legend">
+                <span class="legend-item" data-type="SUBWAY" title="Kattints a szűréshez"><i class="dot subway"></i> Metró</span>
+                <span class="legend-item" data-type="TRAM" title="Kattints a szűréshez"><i class="dot tram"></i> Villamos</span>
+                <span class="legend-item" data-type="TROLLEYBUS" title="Kattints a szűréshez"><i class="dot trolley"></i> Troli</span>
+                <span class="legend-item" data-type="BUS" title="Kattints a szűréshez"><i class="dot bus"></i> Busz</span>
+                <span class="legend-item" data-type="RAIL" title="Kattints a szűréshez"><i class="dot rail"></i> HÉV / Vasút</span>
+                <span class="legend-item" data-type="MAV" title="Kattints a szűréshez"><i class="dot mav"></i> MÁV Vonat</span>
+            </div>
+        </div>
+
+        <!-- Right Sidebar: FUTÁR Departure Board & DIY Info -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Active Stop Departure Board -->
+            <section class="futar-board">
+                <div class="futar-header">
+                    <div>
+                        <span class="futar-label">FUTÁR KIJELZŐ</span>
+                        <h2 id="stop-name">Kelenföld vasútállomás M</h2>
+                        <span class="stop-id-badge" id="stop-id-display">BKK_F02222</span>
+                    </div>
+                    <div class="stop-input-row">
+                        <input type="text" id="custom-stop-input" placeholder="Stop ID (pl. BKK_F01046)" />
+                        <button id="load-stop-btn" class="btn-small">Betölt</button>
+                    </div>
+                </div>
+
+                <!-- LED style departure table -->
+                <div class="futar-screen" id="departures-list">
+                    <div class="futar-empty">Adatok betöltése...</div>
+                </div>
+            </section>
+
+            <!-- DIY / Android / ESP32 Quick Endpoint Generator -->
+            <section class="diy-card">
+                <h3>📱 Android Widget &amp; ESP32 API</h3>
+                <p>Közvetlen JSON végpont a kiválasztott megállóhoz (KWGT, HTTP Shortcuts vagy mikrokontroller számára):</p>
+                <div class="code-box">
+                    <code id="diy-endpoint-url">/api/departures/BKK_F02222?limit=5</code>
+                    <button id="copy-url-btn" class="btn-small" title="URL másolása">📋</button>
+                </div>
+                <div class="diy-links">
+                    <a id="open-json-link" href="http://127.0.0.1:8000/api/departures/BKK_F02222?limit=5" target="_blank">Megálló JSON ↗</a>
+                    <a href="http://127.0.0.1:8000/api/gtfs-rt/vehicles?limit=20" target="_blank">GTFS-RT Protobuf JSON ↗</a>
+                    <a href="http://127.0.0.1:8000/docs" target="_blank">Swagger API Docs ↗</a>
+                </div>
+            </section>
+        </aside>
+    </main>
+
+    <!-- Settings Modal (API Key & Refresh Rate) -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Beállítások &amp; BKK API Kulcs</h3>
+                <button id="close-modal-btn" class="btn-icon">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-note">
+                    Ha a szerver <code>.env</code> fájljában még nincs beállítva a <code>BKK_API_KEY</code>, itt megadhatod a saját kulcsodat (a helyi tárolóban elmentjük).
+                </p>
+                <label for="api-key-input">BKK OpenData API Kulcs:</label>
+                <input type="password" id="api-key-input" placeholder="Add meg az API kulcsot..." />
+
+                <label for="refresh-interval-input">Automatikus frissítés (másodperc):</label>
+                <input type="number" id="refresh-interval-input" min="5" max="120" value="10" />
+
+                <div id="api-Warning" class="warning-box hidden">
+                    ⚠️ Nincs API kulcs beállítva! A BKK FUTÁR végpontok kulcs nélkül <code>401 / 403</code> hibát adhatnak.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-settings-btn" class="btn-primary">Mentés</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application TypeScript Entry -->
+    <script type="module" src="/src-ui/main.ts"></script>
+</body>
+</html>
